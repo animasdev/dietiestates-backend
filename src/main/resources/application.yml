@@ -1,0 +1,38 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://127.0.0.1:54322/dietiestates25
+    username: app
+    password: app
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+    open-in-view: false
+  flyway:
+    enabled: true
+
+server:
+  port: 8080
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+# Configurazione Supabase Storage (solo file storage in locale)
+# Per Supabase local, la CLI stampa le chiavi e le porte all'avvio.
+# La base URL dell'API è tipicamente http://127.0.0.1:54321 e lo storage è su /storage/v1
+supabase:
+  storage:
+    baseUrl: ${SUPABASE_STORAGE_URL:http://127.0.0.1:54321/storage/v1}
+    bucket: ${SUPABASE_STORAGE_BUCKET:listings}
+    anonKey: ${SUPABASE_ANON_KEY:dev-anon-key}
+    serviceRoleKey: ${SUPABASE_SERVICE_ROLE_KEY:dev-service-role-key}
+
+# Dev credentials for Spring Security default user
+spring.security.user.name: dev
+spring.security.user.password: dev
