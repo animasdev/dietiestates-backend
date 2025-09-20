@@ -1,0 +1,496 @@
+openapi: 3.0.3
+info:
+  title: DietiEstates25 API
+  version: 0.1.0
+  description: |
+    REST API for DietiEstates25, aligned with course requisiti (documentazione/1-requisiti.md)
+    and architecture (documentazione/2-design.md). Includes JWT security, listings lifecycle
+    with soft delete and geo-enabled search.
+servers:
+  - url: https://api.example.com
+    description: Production (placeholder)
+  - url: http://localhost:8080
+    description: Local dev (placeholder)
+tags:
+  - name: Auth
+  - name: Listings
+  - name: Listing Photos
+  - name: Features
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    Page:
+      name: page
+      in: query
+      description: 0-based page index
+      required: false
+      schema: { type: integer, minimum: 0, default: 0 }
+    Size:
+      name: size
+      in: query
+      description: Page size (items per page)
+      required: false
+      schema: { type: integer, minimum: 1, maximum: 200, default: 20 }
+    Sort:
+      name: sort
+      in: query
+      description: Sort expression, e.g. 'created_at,desc' or 'price_cents,asc'
+      required: false
+      schema: { type: string }
+  schemas:
+    Problem:
+      type: object
+      description: RFC 7807 Problem Details
+      properties:
+        type: { type: string, format: uri }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        instance: { type: string, format: uri }
+      additionalProperties: true
+    Page:
+      type: object
+      properties:
+        page: { type: integer, example: 0 }
+        size: { type: integer, example: 20 }
+        total: { type: integer, example: 123 }
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/Listing' }
+    Listing:
+      type: object
+      required: [id, title, listing_type, status, city, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        agency_id: { type: string, format: uuid }
+        owner_agent_id: { type: string, format: uuid }
+        listing_type:
+          type: string
+          description: Vendita/Affitto
+          enum: [SALE, RENT]
+        status:
+          type: string
+          enum: [DRAFT, PUBLISHED, PENDING_DELETE, DELETED]
+        title: { type: string }
+        description: { type: string }
+        price_cents: { type: integer, nullable: true }
+        monthly_rent_cents: { type: integer, nullable: true }
+        city: { type: string }
+        address: { type: string, nullable: true }
+        rooms: { type: integer, nullable: true }
+        size_sqm: { type: number, format: float, nullable: true }
+        floor: { type: integer, nullable: true }
+        has_elevator: { type: boolean, nullable: true }
+        energy_class: { type: string, nullable: true }
+        features:
+          type: array
+          items: { type: string }
+        geo:
+          type: object
+          properties:
+            lat: { type: number, format: float }
+            lng: { type: number, format: float }
+        photos:
+          type: array
+          items: { $ref: '#/components/schemas/ListingPhoto' }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    ListingCreate:
+      type: object
+      required: [title, listing_type, city]
+      properties:
+        title: { type: string }
+        description: { type: string }
+        listing_type: { type: string, enum: [SALE, RENT] }
+        price_cents: { type: integer, nullable: true }
+        monthly_rent_cents: { type: integer, nullable: true }
+        city: { type: string }
+        address: { type: string }
+        rooms: { type: integer }
+        size_sqm: { type: number, format: float }
+        floor: { type: integer }
+        has_elevator: { type: boolean }
+        energy_class: { type: string }
+        features:
+          type: array
+          items: { type: string }
+        geo:
+          type: object
+          required: [lat, lng]
+          properties:
+            lat: { type: number, format: float }
+            lng: { type: number, format: float }
+    ListingUpdate:
+      allOf:
+        - $ref: '#/components/schemas/ListingCreate'
+      description: Fields are optional; send only those to update
+    ListingPhoto:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        url: { type: string, format: uri }
+        position: { type: integer }
+    DeleteRequest:
+      type: object
+      required: [reason]
+      properties:
+        reason: { type: string, minLength: 1, maxLength: 500 }
+paths:
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Login with email/password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string, format: password }
+      responses:
+        '200':
+          description: Authenticated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access_token: { type: string }
+                  refresh_token: { type: string }
+        '401':
+          description: Invalid credentials
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+  /auth/refresh:
+    post:
+      tags: [Auth]
+      summary: Refresh access token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refresh_token]
+              properties:
+                refresh_token: { type: string }
+      responses:
+        '200':
+          description: New access token
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access_token: { type: string }
+                  refresh_token: { type: string }
+        '401':
+          description: Invalid refresh token
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+  /auth/password/reset-request:
+    post:
+      tags: [Auth]
+      summary: Request password reset email
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { type: string, format: email }
+      responses:
+        '202': { description: Reset initiated if email exists }
+  /auth/password/reset-confirm:
+    post:
+      tags: [Auth]
+      summary: Confirm password reset with token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token, new_password]
+              properties:
+                token: { type: string }
+                new_password: { type: string, format: password, minLength: 8 }
+      responses:
+        '200': { description: Password updated }
+        '400':
+          description: Invalid or expired token
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+
+  /listings:
+    get:
+      tags: [Listings]
+      summary: Search listings (supports geo filters)
+      description: |
+        Accepts filters for type, price, city, features, and optional geospatial radius (lat,lng,radius_m).
+        Implements pagination and sorting. Matches R3 and 2-design search notes.
+      security:
+        - {}
+      parameters:
+        - name: type
+          in: query
+          schema: { type: string, enum: [SALE, RENT] }
+        - name: city
+          in: query
+          schema: { type: string }
+        - name: min_price
+          in: query
+          schema: { type: integer, minimum: 0 }
+        - name: max_price
+          in: query
+          schema: { type: integer, minimum: 0 }
+        - name: rooms
+          in: query
+          schema: { type: integer, minimum: 0 }
+        - name: energy_class
+          in: query
+          schema: { type: string }
+        - name: features
+          in: query
+          schema:
+            type: array
+            items: { type: string }
+          style: form
+          explode: true
+        - name: status
+          in: query
+          schema: { type: string, enum: [PUBLISHED, DRAFT, PENDING_DELETE] }
+          description: Public clients should only receive PUBLISHED; others require auth/role
+        - name: lat
+          in: query
+          schema: { type: number, format: float }
+        - name: lng
+          in: query
+          schema: { type: number, format: float }
+        - name: radius_m
+          in: query
+          schema: { type: integer, minimum: 50, maximum: 100000 }
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+        - $ref: '#/components/parameters/Sort'
+      responses:
+        '200':
+          description: Paginated listings
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Page' }
+    post:
+      tags: [Listings]
+      summary: Create listing (published or draft)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ListingCreate' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Listing' }
+        '400':
+          description: Validation error
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+
+  /listings/{id}:
+    get:
+      tags: [Listings]
+      summary: Get listing by id
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Listing
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Listing' }
+        '404': { description: Not found }
+    patch:
+      tags: [Listings]
+      summary: Update listing fields
+      description: Server enforces role-based field restrictions (RD1) for admin edits.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ListingUpdate' }
+      responses:
+        '200':
+          description: Updated listing
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Listing' }
+        '400':
+          description: Validation error
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '403':
+          description: Forbidden field updates for role
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+
+  /listings/{id}/delete:
+    post:
+      tags: [Listings]
+      summary: Request deletion (soft) → PENDING_DELETE within 24h window
+      description: Implements RD2/RD3. Admin must provide reason; agents can mark their own listings.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DeleteRequest' }
+      responses:
+        '200':
+          description: Listing state updated to PENDING_DELETE
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Listing' }
+
+  /listings/{id}/restore:
+    post:
+      tags: [Listings]
+      summary: Restore a listing from PENDING_DELETE back to PUBLISHED
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Listing restored
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Listing' }
+        '409':
+          description: Window elapsed; cannot restore
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+
+  /listings/{id}/photos:
+    get:
+      tags: [Listing Photos]
+      summary: List photos for a listing
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Photos
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/ListingPhoto' }
+    post:
+      tags: [Listing Photos]
+      summary: Upload and attach photos (multipart)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                files:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+                positions:
+                  type: array
+                  items: { type: integer }
+            encoding:
+              files:
+                style: form
+      responses:
+        '201':
+          description: Photos added
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/ListingPhoto' }
+
+  /listings/{id}/photos/{photoId}:
+    delete:
+      tags: [Listing Photos]
+      summary: Remove a photo from listing
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: photoId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '204': { description: Removed }
+
+  /features:
+    get:
+      tags: [Features]
+      summary: List available features (read-only lookup)
+      responses:
+        '200':
+          description: Feature codes
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { type: string }
+
