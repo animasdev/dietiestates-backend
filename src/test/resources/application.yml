@@ -16,6 +16,10 @@ spring:
 
 # Disable bootstrap that writes to the DB during tests
 app:
+  jwt:
+    secret: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+    expires-seconds: 3600
+    issuer: test
   bootstrap:
     superadmin:
       enabled: false
