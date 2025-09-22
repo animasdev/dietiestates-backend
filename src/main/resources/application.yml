@@ -23,6 +23,19 @@ management:
       exposure:
         include: health,info
 
+app:
+  jwt:
+    # WARNING: replace for production; 32+ chars recommended for HS256
+    secret: ${APP_JWT_SECRET:b42f1e0f8b77e676287c8deefac4459a}
+    expires-seconds: 3600
+    issuer: dietiestates-backend
+  security:
+    # Default password algorithm id for new hashes (supported: bcrypt, argon2, pbkdf2, scrypt)
+    password-algo: bcrypt
+    bcrypt:
+      # BCrypt strength (cost). 10..12 commonly used; higher is slower but stronger
+      strength: 10
+
 # Configurazione Supabase Storage (solo file storage in locale)
 # Per Supabase local, la CLI stampa le chiavi e le porte all'avvio.
 # La base URL dell'API è tipicamente http://127.0.0.1:54321 e lo storage è su /storage/v1
@@ -33,7 +46,4 @@ supabase:
     anonKey: ${SUPABASE_ANON_KEY:dev-anon-key}
     serviceRoleKey: ${SUPABASE_SERVICE_ROLE_KEY:dev-service-role-key}
 
-# Dev credentials for Spring Security default user
-# Using {noop} so it works with DelegatingPasswordEncoder
-spring.security.user.name: dev
-spring.security.user.password: "{noop}dev"
+# Note: Basic auth dev user removed; Swagger and /auth/login are public, other APIs secured by Bearer JWT.
