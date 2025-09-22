@@ -34,5 +34,6 @@ supabase:
     serviceRoleKey: ${SUPABASE_SERVICE_ROLE_KEY:dev-service-role-key}
 
 # Dev credentials for Spring Security default user
+# Using {noop} so it works with DelegatingPasswordEncoder
 spring.security.user.name: dev
-spring.security.user.password: dev
+spring.security.user.password: "{noop}dev"
