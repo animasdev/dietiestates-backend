@@ -16,15 +16,19 @@ public class UserService {
     private final RoleRepository roleRepository;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final it.dieti.dietiestatesbackend.config.SecurityPasswordProperties passwordProps;
 
-    private static final String PASSWORD_ALGO = "bcrypt";
     private static final String DEFAULT_SUPERADMIN_EMAIL = "superadmin@dietiestates.local";
     private static final String DEFAULT_SUPERADMIN_NAME = "Super Admin";
 
-    public UserService(RoleRepository roleRepository, UserRepository userRepository, PasswordEncoder passwordEncoder) {
+    public UserService(RoleRepository roleRepository,
+                       UserRepository userRepository,
+                       PasswordEncoder passwordEncoder,
+                       it.dieti.dietiestatesbackend.config.SecurityPasswordProperties passwordProps) {
         this.roleRepository = roleRepository;
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
+        this.passwordProps = passwordProps;
     }
 
     public List<Role> findAllRoles() {
@@ -50,7 +54,7 @@ public class UserService {
                 true,
                 role.id(),
                 passwordHash,
-                PASSWORD_ALGO,
+                passwordProps.getPasswordAlgo(),
                 null,
                 null
         );

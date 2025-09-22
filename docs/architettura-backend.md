@@ -77,3 +77,28 @@ Note progettuali
 - Le transazioni sono dichiarate nel service; per query usare `@Transactional(readOnly = true)`.
 - Ordinamento e paging lato persistence adapter (es. `Sort.by("code").ascending()`).
 - Lo schema DB è gestito da Flyway (`db/migration`); la tabella `features` è creata/seedata in `V2__lookups.sql`.
+
+## Bootstrap: SUPERADMIN di default
+- All'avvio un `ApplicationRunner` verifica se esiste l'utente SUPERADMIN; se mancante, lo crea con una password casuale e la registra nei log una sola volta.
+- Servizio: `UserService.createDefaultSuperAdminIfMissing()` restituisce la password in chiaro generata oppure `null` se esiste già.
+- Credenziali di default:
+  - email: `superadmin@dietiestates.local`
+  - displayName: `Super Admin`
+- Attenzione: la password è loggata solo alla prima creazione; cambiarla al primo accesso.
+
+## Autenticazione & JWT
+- Flusso di login
+  - Endpoint: `POST /auth/login` (permitAll) riceve `{ email, password }` e risponde con `{ access_token }`.
+  - Il servizio verifica l'hash (bcrypt per default) e rilascia un JWT valido 1 ora.
+- Dato ausiliario in risposta
+  - Il login restituisce anche `first_access: true|false` per consentire al FE di forzare il cambio password al primo accesso senza chiamate aggiuntive.
+- Token
+  - Algoritmo: HS256 tramite Spring Security (Nimbus), chiave in `app.jwt.secret`.
+  - Claims: minimi — `sub` (userId), `iat`, `exp`, `iss`. Nessun dato personale nel token.
+  - Validazione: Resource Server (`spring-boot-starter-oauth2-resource-server`) controlla i Bearer sui percorsi protetti.
+- Configurazione sicurezza
+  - Pubblici: `/auth/login`, `/auth/refresh` (futuro), `/v3/api-docs/**`, `/swagger-ui/**`, `/actuator/health`, `/actuator/info`.
+  - Protetti: tutti gli altri endpoint con `Authorization: Bearer <JWT>`.
+- Uso lato FE
+  - Dopo il login, salvare `access_token` e chiamare le API protette con Bearer.
+  - Se servono i dati profilo, usare un endpoint `/me` subito dopo (meglio che inserire PII nel token).

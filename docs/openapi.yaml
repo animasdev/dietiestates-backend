@@ -164,6 +164,9 @@ paths:
                 properties:
                   access_token: { type: string }
                   refresh_token: { type: string }
+                  first_access:
+                    type: boolean
+                    description: true se l'utente è al primo accesso e deve cambiare password
         '401':
           description: Invalid credentials
           content:
@@ -493,4 +496,3 @@ paths:
               schema:
                 type: array
                 items: { type: string }
-
