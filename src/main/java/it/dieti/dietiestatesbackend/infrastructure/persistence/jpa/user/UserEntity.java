@@ -15,8 +15,9 @@ import static jakarta.persistence.FetchType.LAZY;
 @Setter
 public class UserEntity {
     @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
     @Column(nullable = false)
-    private UUID  id;
+    private UUID id;
     @Column(nullable = false, name = "display_name")
     private String displayName;
     // PostgreSQL citext (case-insensitive). Keep aligned with V3__users.sql
