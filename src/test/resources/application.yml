@@ -14,6 +14,12 @@ spring:
   flyway:
     enabled: false
 
+# Disable bootstrap that writes to the DB during tests
+app:
+  bootstrap:
+    superadmin:
+      enabled: false
+
 logging:
   level:
     org.springframework.test: WARN
