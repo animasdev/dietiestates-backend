@@ -10,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.security.SecureRandom;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 public class UserService {
@@ -74,5 +75,14 @@ public class UserService {
             sb.append(chars.charAt(rnd.nextInt(chars.length())));
         }
         return sb.toString();
+    }
+
+
+    public User findUserById(UUID id) {
+        return userRepository.findById(id).orElseThrow();
+    }
+
+    public String getRoleCode(UUID roleId) {
+        return roleRepository.findById(roleId).orElseThrow().code();
     }
 }

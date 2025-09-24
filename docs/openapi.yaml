@@ -16,6 +16,7 @@ tags:
   - name: Listings
   - name: Listing Photos
   - name: Features
+  - name: Users
 components:
   securitySchemes:
     bearerAuth:
@@ -139,6 +140,13 @@ components:
       required: [reason]
       properties:
         reason: { type: string, minLength: 1, maxLength: 500 }
+    UserInfo:
+      type: object
+      required: [displayName, email, role]
+      properties:
+        displayName: {type: string}
+        email: {type: string, format: email}
+        role: {type: string}
 paths:
   /auth/login:
     post:
@@ -496,3 +504,16 @@ paths:
               schema:
                 type: array
                 items: { type: string }
+
+  /users/me:
+    get:
+      tags: [Users]
+      summary: Return the logged-in user information.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: User information
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UserInfo' }

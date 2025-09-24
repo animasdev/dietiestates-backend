@@ -26,6 +26,11 @@ public class RoleRepositoryJpaAdapter implements RoleRepository {
         return jpaRepository.findByCode(code).map(this::toDomain);
     }
 
+    @Override
+    public Optional<Role> findById(java.util.UUID id) {
+        return jpaRepository.findById(id).map(this::toDomain);
+    }
+
     private Role toDomain(RoleEntity roleEntity) {
         return new Role(
                 roleEntity.getId(),

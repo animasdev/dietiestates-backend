@@ -20,7 +20,7 @@ public class UserEntity {
     private UUID id;
     @Column(nullable = false, name = "display_name")
     private String displayName;
-    // PostgreSQL citext (case-insensitive). Keep aligned with V3__users.sql
+    // PostgreSQL citext (case-insensitive)
     @Column(nullable = false, columnDefinition = "citext")
     private String email;
     @ManyToOne(fetch = LAZY)
