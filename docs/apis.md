@@ -4,6 +4,8 @@ Di seguito è indicata la pianificazione degli endpoint restful esposti dall'app
 - `/agents` CRUD per agenti
 - `/agencies` CRUD per agenzie
 - `/auth` per gestire l'autenticazione ( emissione e refresh dei token) e gli identity providers (ad esempio Google)
+  - `POST /auth/sign-up/request` avvia la registrazione (sempre 202; token email generato o rinnovato)
+  - `POST /auth/sign-up/confirm` conferma la registrazione con token e imposta la password
 - `/listings` per gestire gli annunci: CRUD; gestione degli stati; moderazione da parte degli admin; foto collegate.
 - `/notifications` per gestire le notifiche email verso gli utenti
 Inoltre i seguenti endpoint gestiscono le entità di dominio:

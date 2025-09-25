@@ -245,6 +245,50 @@ paths:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Problem' }
 
+  /auth/sign-up/request:
+    post:
+      tags: [Auth]
+      summary: Start email sign-up flow
+      description: |
+        Initiates user registration by creating a confirmation token and sending a confirmation email.
+        Always responds 202 to avoid user enumeration. If a valid token already exists for the email,
+        keeps the same token value and refreshes its expiration.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, displayName]
+              properties:
+                email: { type: string, format: email }
+                displayName: { type: string, minLength: 1 }
+      responses:
+        '202': { description: Sign-up initiated if eligible }
+
+  /auth/sign-up/confirm:
+    post:
+      tags: [Auth]
+      summary: Confirm sign-up with token
+      description: Completes registration by validating the token and setting the initial password.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token, password]
+              properties:
+                token: { type: string }
+                password: { type: string, format: password, minLength: 8 }
+      responses:
+        '200': { description: Registration completed }
+        '400':
+          description: Invalid or expired token
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+
   /listings:
     get:
       tags: [Listings]
