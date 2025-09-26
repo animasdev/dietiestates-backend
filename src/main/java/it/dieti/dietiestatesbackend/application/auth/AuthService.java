@@ -80,7 +80,7 @@ public class AuthService {
     }
 
     @Transactional
-    public void requestSignUp(String email, String displayName) {
+    public void requestSignUp(String email, String displayName, String requestedRoleCodeOrNull) {
         var normalized = email == null ? "" : email.trim();
         var name = displayName == null ? "" : displayName.trim();
         if (normalized.isBlank() || name.isBlank()) {
@@ -90,13 +90,17 @@ public class AuthService {
         if (userRepository.existsByEmail(normalized)) {
             return;
         }
+        // Resolve role by code (API stays with roleCode), but persist roleId in token
+        var effectiveRole = roleRepository.findByCode(
+                (requestedRoleCodeOrNull == null || requestedRoleCodeOrNull.isBlank()) ? "USER" : requestedRoleCodeOrNull.trim()
+        ).orElseThrow(() -> new IllegalArgumentException("Role does not exist"));
         var now = OffsetDateTime.now();
         var existing = signUpTokenRepository.findActiveByEmail(normalized, now);
         if (existing.isPresent()) {
             // Refresh expiration, keep token value unchanged
             var t = existing.get();
             var refreshed = new SignUpToken(
-                    t.id(), t.email(), t.displayName(), t.token(),
+                    t.id(), t.email(), t.displayName(), t.token(), t.roleId(),
                     now.plusMinutes(SIGNUP_TOKEN_TTL_MINUTES), t.consumedAt(), t.createdAt(), now
             );
             signUpTokenRepository.update(refreshed);
@@ -106,7 +110,7 @@ public class AuthService {
 
         String token = generateToken();
         var toInsert = new SignUpToken(
-                null, normalized, name, token,
+                null, normalized, name, token, effectiveRole.id(),
                 now.plusMinutes(SIGNUP_TOKEN_TTL_MINUTES), null, now, now
         );
         signUpTokenRepository.insert(toInsert);
@@ -124,13 +128,12 @@ public class AuthService {
         var t = opt.get();
         // If somehow user already exists, consider token consumed and return true
         if (!userRepository.existsByEmail(t.email())) {
-            var roleUser = roleRepository.findByCode("USER").orElseThrow();
             var user = new User(
                     null,
                     t.displayName(),
                     t.email(),
                     false,
-                    roleUser.id(),
+                    t.roleId(),
                     passwordEncoder.encode(rawPassword),
                     passwordProps.getPasswordAlgo(),
                     null,
@@ -139,7 +142,7 @@ public class AuthService {
             userRepository.insert(user);
         }
         var consumed = new SignUpToken(
-                t.id(), t.email(), t.displayName(), t.token(), t.expiresAt(), now, t.createdAt(), now
+                t.id(), t.email(), t.displayName(), t.token(), t.roleId(), t.expiresAt(), now, t.createdAt(), now
         );
         signUpTokenRepository.update(consumed);
         return true;

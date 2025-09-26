@@ -8,9 +8,9 @@ public record SignUpToken(
         String email,
         String displayName,
         String token,
+        UUID roleId,
         OffsetDateTime expiresAt,
         OffsetDateTime consumedAt,
         OffsetDateTime createdAt,
         OffsetDateTime updatedAt
 ) {}
-

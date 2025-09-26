@@ -1,11 +1,14 @@
 package it.dieti.dietiestatesbackend.infrastructure.persistence.jpa.auth;
 
+import it.dieti.dietiestatesbackend.infrastructure.persistence.jpa.user.role.RoleEntity;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
 import java.time.OffsetDateTime;
 import java.util.UUID;
+
+import static jakarta.persistence.FetchType.LAZY;
 
 @Entity
 @Table(name = "signup_tokens")
@@ -26,6 +29,10 @@ public class SignUpTokenEntity {
     @Column(nullable = false, unique = true)
     private String token;
 
+    @ManyToOne(fetch = LAZY)
+    @JoinColumn(name = "role_id", nullable = false)
+    private RoleEntity role;
+
     @Column(name = "expires_at", nullable = false)
     private OffsetDateTime expiresAt;
 
@@ -38,4 +45,3 @@ public class SignUpTokenEntity {
     @Column(name = "updated_at")
     private OffsetDateTime updatedAt;
 }
-

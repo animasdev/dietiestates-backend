@@ -2,6 +2,7 @@ package it.dieti.dietiestatesbackend.infrastructure.persistence.jpa.auth;
 
 import it.dieti.dietiestatesbackend.domain.auth.SignUpToken;
 import it.dieti.dietiestatesbackend.domain.auth.SignUpTokenRepository;
+import it.dieti.dietiestatesbackend.infrastructure.persistence.jpa.user.role.RoleEntity;
 import org.springframework.stereotype.Component;
 
 import java.time.OffsetDateTime;
@@ -50,6 +51,7 @@ public class SignUpTokenRepositoryJpaAdapter implements SignUpTokenRepository {
                 e.getEmail(),
                 e.getDisplayName(),
                 e.getToken(),
+                e.getRole() != null ? e.getRole().getId() : null,
                 e.getExpiresAt(),
                 e.getConsumedAt(),
                 e.getCreatedAt(),
@@ -63,6 +65,13 @@ public class SignUpTokenRepositoryJpaAdapter implements SignUpTokenRepository {
         e.setEmail(d.email());
         e.setDisplayName(d.displayName());
         e.setToken(d.token());
+        if (d.roleId() != null) {
+            var roleRef = new RoleEntity();
+            roleRef.setId(d.roleId());
+            e.setRole(roleRef);
+        } else {
+            e.setRole(null);
+        }
         e.setExpiresAt(d.expiresAt());
         e.setConsumedAt(d.consumedAt());
         e.setCreatedAt(d.createdAt());
@@ -70,4 +79,3 @@ public class SignUpTokenRepositoryJpaAdapter implements SignUpTokenRepository {
         return e;
     }
 }
-

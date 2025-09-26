@@ -85,4 +85,8 @@ public class UserService {
     public String getRoleCode(UUID roleId) {
         return roleRepository.findById(roleId).orElseThrow().code();
     }
+
+    public Role getCodeFromRole(UUID roleId) {
+        return roleRepository.findById(roleId).orElseThrow();
+    }
 }

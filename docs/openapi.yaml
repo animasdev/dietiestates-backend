@@ -253,6 +253,8 @@ paths:
         Initiates user registration by creating a confirmation token and sending a confirmation email.
         Always responds 202 to avoid user enumeration. If a valid token already exists for the email,
         keeps the same token value and refreshes its expiration.
+        If called with a valid SUPERADMIN bearer token, an optional `roleCode` can be provided to invite
+        a user with a specific role (must match an existing role code). Otherwise, the role defaults to `USER`.
       requestBody:
         required: true
         content:
@@ -263,6 +265,9 @@ paths:
               properties:
                 email: { type: string, format: email }
                 displayName: { type: string, minLength: 1 }
+                roleCode:
+                  type: string
+                  description: Optional, honored only for SUPERADMIN callers; must match an existing role code
       responses:
         '202': { description: Sign-up initiated if eligible }
 
