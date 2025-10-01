@@ -6,6 +6,8 @@ import it.dieti.dietiestatesbackend.api.model.AuthSignUpConfirmPostRequest;
 import it.dieti.dietiestatesbackend.api.model.AuthSignUpRequestPostRequest;
 import it.dieti.dietiestatesbackend.application.auth.AuthService;
 import it.dieti.dietiestatesbackend.application.user.UserService;
+import it.dieti.dietiestatesbackend.domain.user.role.RolesPolicy;
+import it.dieti.dietiestatesbackend.domain.user.role.RolesEnum;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -50,7 +52,7 @@ public class AuthApiDelegateImpl implements AuthApiDelegate {
             var auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
             if (auth instanceof JwtAuthenticationToken jwtAuth) {
                 var roleOfCaller = resolveCurrentUserRoleCode(jwtAuth);
-                if (roleOfCaller != null && "SUPERADMIN".equalsIgnoreCase(roleOfCaller)) {
+                if (RolesPolicy.isAllowedCreate(roleOfCaller,RolesEnum.valueOf(request.getRoleCode()))) {
                     requestedRoleCode = request.getRoleCode();
                 }
             }
@@ -76,10 +78,11 @@ public class AuthApiDelegateImpl implements AuthApiDelegate {
         }
     }
 
-    private String resolveCurrentUserRoleCode(JwtAuthenticationToken jwtAuth) {
+    private RolesEnum resolveCurrentUserRoleCode(JwtAuthenticationToken jwtAuth) {
         try {
             var userId = java.util.UUID.fromString(jwtAuth.getToken().getSubject());
-            return userService.getRoleCode(userService.findUserById(userId).roleId());
+            var roleCode =  userService.getRoleCode(userService.findUserById(userId).roleId());
+            return RolesEnum.valueOf(roleCode);
         } catch (Exception e) {
             log.debug("Failed to resolve caller role from JWT", e);
             return null;

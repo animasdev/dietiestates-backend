@@ -4,6 +4,7 @@ import it.dieti.dietiestatesbackend.domain.user.User;
 import it.dieti.dietiestatesbackend.domain.user.UserRepository;
 import it.dieti.dietiestatesbackend.domain.user.role.Role;
 import it.dieti.dietiestatesbackend.domain.user.role.RoleRepository;
+import it.dieti.dietiestatesbackend.domain.user.role.RolesEnum;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -64,7 +65,7 @@ public class UserService {
     }
 
     private Role getSuperAdminRole() {
-        return roleRepository.findByCode("SUPERADMIN").orElseThrow();
+        return roleRepository.findByCode(RolesEnum.SUPERADMIN.getDescription()).orElseThrow();
     }
 
     private static String generateSecurePassword(int length) {
