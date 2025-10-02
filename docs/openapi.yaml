@@ -208,7 +208,7 @@ paths:
           content:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Problem' }
-  /auth/password/reset-request:
+  /auth/password-reset/request:
     post:
       tags: [Auth]
       summary: Request password reset email
@@ -223,7 +223,7 @@ paths:
                 email: { type: string, format: email }
       responses:
         '202': { description: Reset initiated if email exists }
-  /auth/password/reset-confirm:
+  /auth/password-reset/confirm:
     post:
       tags: [Auth]
       summary: Confirm password reset with token

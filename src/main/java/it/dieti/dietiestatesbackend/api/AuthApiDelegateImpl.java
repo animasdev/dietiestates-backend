@@ -1,10 +1,8 @@
 package it.dieti.dietiestatesbackend.api;
 
-import it.dieti.dietiestatesbackend.api.model.AuthLoginPost200Response;
-import it.dieti.dietiestatesbackend.api.model.AuthLoginPostRequest;
-import it.dieti.dietiestatesbackend.api.model.AuthSignUpConfirmPostRequest;
-import it.dieti.dietiestatesbackend.api.model.AuthSignUpRequestPostRequest;
+import it.dieti.dietiestatesbackend.api.model.*;
 import it.dieti.dietiestatesbackend.application.auth.AuthService;
+import it.dieti.dietiestatesbackend.application.auth.PasswordResetService;
 import it.dieti.dietiestatesbackend.application.user.UserService;
 import it.dieti.dietiestatesbackend.domain.user.role.RolesPolicy;
 import it.dieti.dietiestatesbackend.domain.user.role.RolesEnum;
@@ -13,6 +11,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -21,11 +20,13 @@ import org.springframework.web.server.ResponseStatusException;
 public class AuthApiDelegateImpl implements AuthApiDelegate {
     private final AuthService authService;
     private final UserService userService;
+    private final PasswordResetService passwordResetService;
     private static final Logger log = LoggerFactory.getLogger(AuthApiDelegateImpl.class);
 
-    public AuthApiDelegateImpl(AuthService authService, UserService userService) {
+    public AuthApiDelegateImpl(AuthService authService, UserService userService, PasswordResetService passwordResetService) {
         this.authService = authService;
         this.userService = userService;
+        this.passwordResetService = passwordResetService;
     }
 
     @Override
@@ -49,7 +50,7 @@ public class AuthApiDelegateImpl implements AuthApiDelegate {
     public ResponseEntity<Void> authSignUpRequestPost(AuthSignUpRequestPostRequest request) {
         try {
             String requestedRoleCode = null;
-            var auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+            var auth = SecurityContextHolder.getContext().getAuthentication();
             if (auth instanceof JwtAuthenticationToken jwtAuth) {
                 var roleOfCaller = resolveCurrentUserRoleCode(jwtAuth);
                 if (RolesPolicy.isAllowedCreate(roleOfCaller,RolesEnum.valueOf(request.getRoleCode()))) {
@@ -74,6 +75,27 @@ public class AuthApiDelegateImpl implements AuthApiDelegate {
             return ResponseEntity.badRequest().build();
         } catch (Exception ex) {
             log.warn("authSignUpConfirmPost failed", ex);
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
+    @Override
+    public ResponseEntity<Void> authPasswordResetRequestPost(AuthPasswordResetRequestPostRequest authPasswordResetRequestPostRequest){
+            String emailFromBody = authPasswordResetRequestPostRequest.getEmail();
+            passwordResetService.requestPasswordResetByEmail(emailFromBody);
+            return ResponseEntity.accepted().build();
+    }
+
+    @Override
+    public ResponseEntity<Void> authPasswordResetConfirmPost(AuthPasswordResetConfirmPostRequest authPasswordResetConfirmPostRequest) {
+        try {
+            String token = authPasswordResetConfirmPostRequest.getToken();
+            String newPassword = authPasswordResetConfirmPostRequest.getNewPassword();
+            boolean ok = passwordResetService.confirmPasswordReset(token, newPassword);
+            if (ok) return ResponseEntity.ok().build();
+            return ResponseEntity.badRequest().build();
+        } catch (Exception ex) {
+            log.warn("authPasswordResetConfirmPost failed", ex);
             return ResponseEntity.badRequest().build();
         }
     }

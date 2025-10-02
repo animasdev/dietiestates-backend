@@ -11,4 +11,9 @@ public class NotificationService {
         log.info("Sign-up confirmation requested for email={}", email);
         log.info("Use token to confirm: {}", token);
     }
+
+    public void sendPasswordReset(String email, String token) {
+        log.info("Password reset requested for email={}", email);
+        log.info("Use token to reset password: {}", token);
+    }
 }
