@@ -294,6 +294,29 @@ paths:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Problem' }
 
+  /auth/password:
+    put:
+      tags: [ Auth ]
+      summary: Change passwod
+      description: Changes the current password for the authenticated user.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [ old_password, new_password ]
+              properties:
+                old_password: { type: string, format: password, minLength: 8 }
+                new_password: { type: string, format: password, minLength: 8 }
+      responses:
+        '200': { description: password changed }
+        '400':
+          description: Invalid or expired token
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+
   /listings:
     get:
       tags: [Listings]

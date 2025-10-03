@@ -100,6 +100,25 @@ public class AuthApiDelegateImpl implements AuthApiDelegate {
         }
     }
 
+    @Override
+    public ResponseEntity<Void> authPasswordPut(AuthPasswordPutRequest authPasswordPutRequest) {
+        try {
+            var auth = SecurityContextHolder.getContext().getAuthentication();
+            if (!(auth instanceof JwtAuthenticationToken jwtAuth)) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            }
+            String oldPassword = authPasswordPutRequest.getOldPassword();
+            String newPassword = authPasswordPutRequest.getNewPassword();
+            var userId = java.util.UUID.fromString(jwtAuth.getToken().getSubject());
+            boolean ok = passwordResetService.changePasswordForUser(userId, oldPassword, newPassword);
+            if (ok) return ResponseEntity.ok().build();
+            return ResponseEntity.badRequest().build();
+        } catch (Exception ex) {
+            log.warn("authPasswordPut failed", ex);
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
     private RolesEnum resolveCurrentUserRoleCode(JwtAuthenticationToken jwtAuth) {
         try {
             var userId = java.util.UUID.fromString(jwtAuth.getToken().getSubject());

@@ -1,6 +1,7 @@
 package it.dieti.dietiestatesbackend.application.auth;
 
 import it.dieti.dietiestatesbackend.application.notification.NotificationService;
+import it.dieti.dietiestatesbackend.config.SecurityPasswordProperties;
 import it.dieti.dietiestatesbackend.domain.auth.PasswordResetToken;
 import it.dieti.dietiestatesbackend.domain.auth.PasswordResetTokenRepository;
 import it.dieti.dietiestatesbackend.domain.user.User;
@@ -21,13 +22,13 @@ public class PasswordResetService {
     private final UserRepository userRepository;
     private final PasswordResetTokenRepository tokenRepository;
     private final PasswordEncoder passwordEncoder;
-    private final it.dieti.dietiestatesbackend.config.SecurityPasswordProperties passwordProps;
+    private final SecurityPasswordProperties passwordProps;
     private final NotificationService notificationService = new NotificationService();
 
     public PasswordResetService(UserRepository userRepository,
                                 PasswordResetTokenRepository tokenRepository,
                                 PasswordEncoder passwordEncoder,
-                                it.dieti.dietiestatesbackend.config.SecurityPasswordProperties passwordProps) {
+                                SecurityPasswordProperties passwordProps) {
         this.userRepository = userRepository;
         this.tokenRepository = tokenRepository;
         this.passwordEncoder = passwordEncoder;
@@ -94,10 +95,31 @@ public class PasswordResetService {
         return true;
     }
 
+    @Transactional
+    public boolean changePasswordForUser(java.util.UUID userId, String oldPassword, String newPassword) {
+        if (userId == null || oldPassword == null || oldPassword.isBlank() || newPassword == null || newPassword.isBlank()) {
+            return false;
+        }
+        var userOpt = userRepository.findById(userId);
+        if (userOpt.isEmpty()) return false;
+        var u = userOpt.get();
+        if (u.passwordHash() == null || u.passwordHash().isBlank()) return false;
+        if (!passwordEncoder.matches(oldPassword, u.passwordHash())) return false;
+
+        var updatedUser = new User(
+                u.id(), u.displayName(), u.email(), false, u.roleId(),
+                passwordEncoder.encode(newPassword),
+                passwordProps.getPasswordAlgo(),
+                u.createdAt(),
+                OffsetDateTime.now()
+        );
+        userRepository.update(updatedUser);
+        return true;
+    }
+
     private static String generateToken() {
         byte[] buf = new byte[32];
         new SecureRandom().nextBytes(buf);
         return HexFormat.of().withUpperCase().formatHex(buf);
     }
 }
-
