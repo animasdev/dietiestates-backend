@@ -6,6 +6,7 @@ import it.dieti.dietiestatesbackend.domain.auth.SignUpTokenRepository;
 import it.dieti.dietiestatesbackend.domain.user.User;
 import it.dieti.dietiestatesbackend.domain.user.UserRepository;
 import it.dieti.dietiestatesbackend.domain.user.role.RoleRepository;
+import it.dieti.dietiestatesbackend.domain.user.role.RolesEnum;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
@@ -64,6 +65,28 @@ public class AuthService {
             throw new BadCredentialsException("Invalid credentials");
         }
 
+        boolean firstAccess = user.firstAccess();
+        if (firstAccess) {
+            var role = roleRepository.findById(user.roleId())
+                    .orElseThrow(() -> new IllegalStateException("Role not found for user"));
+            var roleEnum = resolveRoleEnum(role.code());
+            if (!isOnboardingRole(roleEnum)) {
+                var update = new User(
+                        user.id(),
+                        user.displayName(),
+                        user.email(),
+                        false,
+                        user.roleId(),
+                        user.passwordHash(),
+                        user.passwordAlgo(),
+                        user.createdAt(),
+                        user.updatedAt()
+                );
+                userRepository.update(update);
+                firstAccess = false;
+            }
+        }
+
         Instant now = Instant.now();
         Instant exp = now.plusSeconds(jwtConfig.getExpiresSeconds());
 
@@ -76,7 +99,19 @@ public class AuthService {
 
         var header = JwsHeader.with(MacAlgorithm.HS256).build();
         String token = jwtEncoder.encode(JwtEncoderParameters.from(header, claims)).getTokenValue();
-        return new AuthLoginResult(token, user.firstAccess());
+        return new AuthLoginResult(token, firstAccess);
+    }
+
+    private RolesEnum resolveRoleEnum(String code) {
+        try {
+            return RolesEnum.valueOf(code);
+        } catch (IllegalArgumentException | NullPointerException ex) {
+            throw new IllegalStateException("Unsupported role code: " + code, ex);
+        }
+    }
+
+    private boolean isOnboardingRole(RolesEnum role) {
+        return role == RolesEnum.AGENT || role == RolesEnum.AGENCY;
     }
 
     @Transactional
@@ -132,7 +167,7 @@ public class AuthService {
                     null,
                     t.displayName(),
                     t.email(),
-                    false,
+                    true,
                     t.roleId(),
                     passwordEncoder.encode(rawPassword),
                     passwordProps.getPasswordAlgo(),

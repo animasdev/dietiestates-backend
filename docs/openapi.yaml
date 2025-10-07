@@ -17,6 +17,8 @@ tags:
   - name: Listing Photos
   - name: Features
   - name: Users
+  - name: Agencies
+  - name: Agents
   - name: Media
 components:
   securitySchemes:
@@ -148,6 +150,76 @@ components:
         displayName: {type: string}
         email: {type: string, format: email}
         role: {type: string}
+    AgencyCreateRequest:
+      type: object
+      required: [name, description]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          description: Nome legale o commerciale dell'agenzia
+        description:
+          type: string
+          minLength: 1
+          description: Descrizione breve dell'agenzia
+        logo_media_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: Identificativo dell'asset già caricato tramite media API
+    Agency:
+      type: object
+      required: [id, name, description, user_id, created_at, updated_at]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        description: { type: string }
+        user_id: { type: string, format: uuid }
+        logo_media_id:
+          type: string
+          format: uuid
+          nullable: true
+        approved_by:
+          type: string
+          format: uuid
+          nullable: true
+        approved_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    AgentCreateRequest:
+      type: object
+      required: [agency_id, rea_number]
+      properties:
+        agency_id:
+          type: string
+          format: uuid
+          description: Agenzia a cui l'agente è associato
+        rea_number:
+          type: string
+          minLength: 1
+          description: Numero REA dell'agente
+        profile_photo_media_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: Identificativo dell'asset foto profilo già caricato
+    Agent:
+      type: object
+      required: [id, user_id, agency_id, rea_number, created_at, updated_at]
+      properties:
+        id: { type: string, format: uuid }
+        user_id: { type: string, format: uuid }
+        agency_id: { type: string, format: uuid }
+        rea_number: { type: string }
+        profile_photo_media_id:
+          type: string
+          format: uuid
+          nullable: true
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
     MediaUploadResponse:
       type: object
       required: [asset_id, public_url]
@@ -601,6 +673,89 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/UserInfo' }
 
+  /agencies:
+    post:
+      tags: [Agencies]
+      summary: Completa il profilo dell'agenzia al primo accesso
+      description: |
+        Utilizzato dagli utenti con ruolo `AGENCY` dopo la prima autenticazione per censire i
+        dettagli dell'agenzia. L'ID proprietario viene derivato dal token (`sub`) e il campo
+        `first_access` dell'utente viene impostato a `false` al termine del flusso.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AgencyCreateRequest' }
+      responses:
+        '201':
+          description: Profilo agenzia creato
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Agency' }
+        '400':
+          description: Dati non validi
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '401':
+          description: Richiesta non autenticata
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '403':
+          description: Ruolo non autorizzato a completare il profilo agenzia
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '409':
+          description: Profilo già completato o first access già consumato
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+
+  /agents:
+    post:
+      tags: [Agents]
+      summary: Completa il profilo dell'agente al primo accesso
+      description: |
+        Utilizzato dagli utenti con ruolo `AGENT` dopo la prima autenticazione per associare il
+        proprio profilo a un'agenzia e fornire il numero REA. L'ID utente è ricavato dal token e
+        `first_access` viene impostato a `false` quando l'operazione va a buon fine.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AgentCreateRequest' }
+      responses:
+        '201':
+          description: Profilo agente creato
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Agent' }
+        '400':
+          description: Dati non validi o agenzia inesistente
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '401':
+          description: Richiesta non autenticata
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '403':
+          description: Ruolo non autorizzato a completare il profilo agente
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '409':
+          description: Profilo già completato o first access già consumato
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
 
   /media/uploads:
     post:
