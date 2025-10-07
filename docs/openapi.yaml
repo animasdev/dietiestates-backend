@@ -17,6 +17,7 @@ tags:
   - name: Listing Photos
   - name: Features
   - name: Users
+  - name: Media
 components:
   securitySchemes:
     bearerAuth:
@@ -147,6 +148,16 @@ components:
         displayName: {type: string}
         email: {type: string, format: email}
         role: {type: string}
+    MediaUploadResponse:
+      type: object
+      required: [asset_id, public_url]
+      properties:
+        asset_id: { type: string, format: uuid }
+        public_url: { type: string, format: uri }
+        mime_type: { type: string }
+        width_px: { type: integer, nullable: true }
+        height_px: { type: integer, nullable: true }
+      description: Risposta con i metadati principali dell'asset memorizzato.
 paths:
   /auth/login:
     post:
@@ -589,3 +600,47 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/UserInfo' }
+
+
+  /media/uploads:
+    post:
+      tags: [Media]
+      summary: Carica un asset multimediale e restituisce i riferimenti
+      description: |
+        Endpoint destinato ad upload di loghi agenzia e foto profilo agente.
+        Supporta file `image/jpeg`, `image/png`, `image/webp` (max 5MB). Il file viene salvato su filesystem locale
+        (`storage/media/<categoria>/...`) e reso disponibile tramite `public_url`.
+        Necessita autenticazione; l'asset viene attribuito all'utente proprietario (`created_by`).
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [category_code, file]
+              properties:
+                category_code:
+                  type: string
+                  description: Codice categoria asset (es. `AGENCY_LOGO`, `AGENT_AVATAR`).
+                file:
+                  type: string
+                  format: binary
+                  description: File immagine da caricare.
+      responses:
+        '201':
+          description: Asset caricato con successo
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MediaUploadResponse' }
+        '400':
+          description: File non valido o categoria sconosciuta
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '401':
+          description: Richiesta non autenticata
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
