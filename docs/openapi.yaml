@@ -150,6 +150,22 @@ components:
         displayName: {type: string}
         email: {type: string, format: email}
         role: {type: string}
+        agency_profile:
+          $ref: '#/components/schemas/UserInfoAgencyProfile'
+        agent_profile:
+          $ref: '#/components/schemas/UserInfoAgentProfile'
+    UserInfoAgencyProfile:
+      type: object
+      properties:
+        name: { type: string }
+        description: { type: string }
+        logo_media_id: { type: string, format: uuid, nullable: true }
+    UserInfoAgentProfile:
+      type: object
+      properties:
+        agency_id: { type: string, format: uuid }
+        rea_number: { type: string }
+        profile_photo_media_id: { type: string, format: uuid, nullable: true }
     AgencyCreateRequest:
       type: object
       required: [name, description]
