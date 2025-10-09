@@ -82,13 +82,12 @@ components:
         title: { type: string }
         description: { type: string }
         price_cents: { type: integer, nullable: true }
-        monthly_rent_cents: { type: integer, nullable: true }
         city: { type: string }
         address: { type: string, nullable: true }
+        postal_code: { type: string, nullable: true }
         rooms: { type: integer, nullable: true }
         size_sqm: { type: number, format: float, nullable: true }
         floor: { type: integer, nullable: true }
-        has_elevator: { type: boolean, nullable: true }
         energy_class: { type: string, nullable: true }
         features:
           type: array
@@ -105,19 +104,18 @@ components:
         updated_at: { type: string, format: date-time }
     ListingCreate:
       type: object
-      required: [title, listing_type, city]
+      required: [title, listing_type, description]
       properties:
         title: { type: string }
         description: { type: string }
         listing_type: { type: string, enum: [SALE, RENT] }
         price_cents: { type: integer, nullable: true }
-        monthly_rent_cents: { type: integer, nullable: true }
         city: { type: string }
         address: { type: string }
+        postal_code: { type: string }
         rooms: { type: integer }
         size_sqm: { type: number, format: float }
         floor: { type: integer }
-        has_elevator: { type: boolean }
         energy_class: { type: string }
         features:
           type: array
