@@ -1,5 +1,7 @@
 package it.dieti.dietiestatesbackend.application.listing;
 
+import it.dieti.dietiestatesbackend.application.exception.ApplicationHttpException;
+import it.dieti.dietiestatesbackend.application.exception.BadRequestException;
 import it.dieti.dietiestatesbackend.application.exception.listing.AgentProfileRequiredException;
 import it.dieti.dietiestatesbackend.application.exception.listing.CoordinatesValidationException;
 import it.dieti.dietiestatesbackend.application.exception.listing.ListingStatusUnavailableException;
@@ -13,10 +15,14 @@ import it.dieti.dietiestatesbackend.domain.listing.status.ListingStatusRepositor
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.PrecisionModel;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.UUID;
@@ -31,6 +37,7 @@ public class ListingCreationService {
     private final ListingTypeRepository listingTypeRepository;
     private final ListingStatusRepository listingStatusRepository;
     private final AgentRepository agentRepository;
+    private static final Logger log = LoggerFactory.getLogger(ListingCreationService.class);
 
     public ListingCreationService(ListingRepository listingRepository,
                                   ListingTypeRepository listingTypeRepository,
@@ -70,9 +77,24 @@ public class ListingCreationService {
         var description = normalize(command.description());
         var addressLine = normalize(command.addressLine());
         var city = normalize(command.city());
-        if (title.isBlank() || description.isBlank() || addressLine.isBlank() || city.isBlank()) {
-            throw new IllegalArgumentException("Title, description, address and city are required");
+        List<ApplicationHttpException.FieldErrorDetail> fieldErrors = new ArrayList<>();
+        if (title.isBlank()) {
+            fieldErrors.add(new ApplicationHttpException.FieldErrorDetail("title", "Il campo 'title' è obbligatorio."));
         }
+        if (description.isBlank()) {
+            fieldErrors.add(new ApplicationHttpException.FieldErrorDetail("description", "Il campo 'description' è obbligatorio."));
+        }
+        if (addressLine.isBlank()) {
+            fieldErrors.add(new ApplicationHttpException.FieldErrorDetail("address", "Il campo 'address' è obbligatorio."));
+        }
+        if (city.isBlank()) {
+            fieldErrors.add(new ApplicationHttpException.FieldErrorDetail("city", "Il campo 'city' è obbligatorio."));
+        }
+        if (!fieldErrors.isEmpty()) {
+            log.warn("Richiesta listing non valida per user {}: campi mancanti", userId);
+            throw BadRequestException.forFields("Richiesta non valida: completare tutti i campi obbligatori.", fieldErrors);
+        }
+
 
         var typeCode = normalize(command.listingTypeCode()).toUpperCase(Locale.ROOT);
         var listingType = listingTypeRepository.findByCode(typeCode)

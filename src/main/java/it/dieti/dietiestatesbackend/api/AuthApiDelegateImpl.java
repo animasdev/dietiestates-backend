@@ -3,18 +3,21 @@ package it.dieti.dietiestatesbackend.api;
 import it.dieti.dietiestatesbackend.api.model.*;
 import it.dieti.dietiestatesbackend.application.auth.AuthService;
 import it.dieti.dietiestatesbackend.application.auth.PasswordResetService;
+import it.dieti.dietiestatesbackend.application.exception.BadRequestException;
+import it.dieti.dietiestatesbackend.application.exception.ForbiddenException;
+import it.dieti.dietiestatesbackend.application.exception.InternalServerErrorException;
+import it.dieti.dietiestatesbackend.application.exception.UnauthorizedException;
 import it.dieti.dietiestatesbackend.application.user.UserService;
 import it.dieti.dietiestatesbackend.domain.user.role.RolesPolicy;
 import it.dieti.dietiestatesbackend.domain.user.role.RolesEnum;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Service;
-import org.springframework.web.server.ResponseStatusException;
+import java.util.Arrays;
 
 @Service
 public class AuthApiDelegateImpl implements AuthApiDelegate {
@@ -35,48 +38,33 @@ public class AuthApiDelegateImpl implements AuthApiDelegate {
             var result = authService.login(authLoginPostRequest.getEmail(), authLoginPostRequest.getPassword());
             AuthLoginPost200Response body = new AuthLoginPost200Response();
             body.setAccessToken(result.accessToken());
-
-            body.getClass().getMethod("setFirstAccess", Boolean.class).invoke(body, result.firstAccess());
-
+            body.setFirstAccess(result.firstAccess());
             return ResponseEntity.ok(body);
         } catch (BadCredentialsException ex) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            log.warn("Login fallito per email {}", authLoginPostRequest.getEmail());
+            throw UnauthorizedException.invalidCredentials();
+        } catch (UnauthorizedException | BadRequestException ex) {
+            throw ex;
         } catch (Exception ex) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+            log.error("Errore inatteso durante login", ex);
+            throw new InternalServerErrorException("Si è verificato un errore interno. Riprova più tardi.");
         }
     }
 
     @Override
     public ResponseEntity<Void> authSignUpRequestPost(AuthSignUpRequestPostRequest request) {
-        try {
-            String requestedRoleCode = null;
-            var auth = SecurityContextHolder.getContext().getAuthentication();
-            if (auth instanceof JwtAuthenticationToken jwtAuth) {
-                var roleOfCaller = resolveCurrentUserRoleCode(jwtAuth);
-                if (RolesPolicy.isAllowedCreate(roleOfCaller,RolesEnum.valueOf(request.getRoleCode()))) {
-                    requestedRoleCode = request.getRoleCode();
-                }
-            }
-            authService.requestSignUp(request.getEmail(), request.getDisplayName(), requestedRoleCode);
-            return ResponseEntity.accepted().build();
-        } catch (IllegalArgumentException ex) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ex.getMessage());
-        } catch (Exception ex) {
-            log.warn("authSignUpRequestPost failed, returning 202 to avoid enumeration", ex);
-            return ResponseEntity.status(HttpStatus.ACCEPTED).build();
-        }
+        String requestedRoleCode = resolveRequestedRoleCode(request);
+        authService.requestSignUp(request.getEmail(), request.getDisplayName(), requestedRoleCode);
+        return ResponseEntity.accepted().build();
     }
 
     @Override
     public ResponseEntity<Void> authSignUpConfirmPost(AuthSignUpConfirmPostRequest request) {
-        try {
-            boolean ok = authService.confirmSignUp(request.getToken(), request.getPassword());
-            if (ok) return ResponseEntity.ok().build();
-            return ResponseEntity.badRequest().build();
-        } catch (Exception ex) {
-            log.warn("authSignUpConfirmPost failed", ex);
-            return ResponseEntity.badRequest().build();
+        if (authService.confirmSignUp(request.getToken(), request.getPassword())) {
+            return ResponseEntity.ok().build();
         }
+        log.warn("Conferma sign-up fallita per token {}", request.getToken());
+        throw BadRequestException.of("Token di conferma non valido o scaduto.");
     }
 
     @Override
@@ -88,41 +76,71 @@ public class AuthApiDelegateImpl implements AuthApiDelegate {
 
     @Override
     public ResponseEntity<Void> authPasswordResetConfirmPost(AuthPasswordResetConfirmPostRequest authPasswordResetConfirmPostRequest) {
-        try {
-            String token = authPasswordResetConfirmPostRequest.getToken();
-            String newPassword = authPasswordResetConfirmPostRequest.getNewPassword();
-            boolean ok = passwordResetService.confirmPasswordReset(token, newPassword);
-            if (ok) return ResponseEntity.ok().build();
-            return ResponseEntity.badRequest().build();
-        } catch (Exception ex) {
-            log.warn("authPasswordResetConfirmPost failed", ex);
-            return ResponseEntity.badRequest().build();
+        String token = authPasswordResetConfirmPostRequest.getToken();
+        String newPassword = authPasswordResetConfirmPostRequest.getNewPassword();
+        if (passwordResetService.confirmPasswordReset(token, newPassword)) {
+            return ResponseEntity.ok().build();
         }
+        log.warn("Conferma reset password fallita per token {}", token);
+        throw BadRequestException.of("Token di reset non valido o scaduto.");
     }
 
     @Override
     public ResponseEntity<Void> authPasswordPut(AuthPasswordPutRequest authPasswordPutRequest) {
-        try {
-            var auth = SecurityContextHolder.getContext().getAuthentication();
-            if (!(auth instanceof JwtAuthenticationToken jwtAuth)) {
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-            }
-            String oldPassword = authPasswordPutRequest.getOldPassword();
-            String newPassword = authPasswordPutRequest.getNewPassword();
-            var userId = java.util.UUID.fromString(jwtAuth.getToken().getSubject());
-            boolean ok = passwordResetService.changePasswordForUser(userId, oldPassword, newPassword);
-            if (ok) return ResponseEntity.ok().build();
-            return ResponseEntity.badRequest().build();
-        } catch (Exception ex) {
-            log.warn("authPasswordPut failed", ex);
-            return ResponseEntity.badRequest().build();
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        if (!(auth instanceof JwtAuthenticationToken jwtAuth)) {
+            log.warn("Cambio password senza token");
+            throw UnauthorizedException.bearerTokenMissing();
         }
+        String oldPassword = authPasswordPutRequest.getOldPassword();
+        String newPassword = authPasswordPutRequest.getNewPassword();
+        var userId = java.util.UUID.fromString(jwtAuth.getToken().getSubject());
+        if (passwordResetService.changePasswordForUser(userId, oldPassword, newPassword)) {
+            return ResponseEntity.ok().build();
+        }
+        log.warn("Cambio password fallito per user {}", userId);
+        throw BadRequestException.of("Password non aggiornata: verifica la password attuale e i requisiti della nuova password.");
+    }
+
+    private String resolveRequestedRoleCode(AuthSignUpRequestPostRequest request) {
+        var roleCode = request.getRoleCode();
+        if (roleCode == null || roleCode.isBlank()) {
+            return null;
+        }
+
+        RolesEnum requestedRole;
+        try {
+            requestedRole = RolesEnum.valueOf(roleCode.trim());
+        } catch (IllegalArgumentException ex) {
+            log.warn("roleCode {} non valido", roleCode);
+            throw BadRequestException.forField("roleCode", "Valore roleCode non valido. Valori ammessi: SUPERADMIN, ADMIN, AGENCY, AGENT.");
+        }
+
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        var allowedRoles = computeAllowedRoles(requestedRole);
+        if (!(auth instanceof JwtAuthenticationToken jwtAuth)) {
+            log.warn("roleCode {} specificato senza autenticazione", roleCode);
+            throw ForbiddenException.actionRequiresRoles(allowedRoles);
+        }
+        var callerRole = resolveCurrentUserRoleCode(jwtAuth);
+        if (callerRole == null || !RolesPolicy.isAllowedCreate(callerRole, requestedRole)) {
+            log.warn("Ruolo {} non autorizzato a invitare {}", callerRole, requestedRole);
+            throw ForbiddenException.actionRequiresRoles(allowedRoles);
+        }
+        return requestedRole.name();
+    }
+
+    private java.util.List<String> computeAllowedRoles(RolesEnum requestedRole) {
+        return Arrays.stream(RolesEnum.values())
+                .filter(role -> RolesPolicy.isAllowedCreate(role, requestedRole))
+                .map(RolesEnum::name)
+                .toList();
     }
 
     private RolesEnum resolveCurrentUserRoleCode(JwtAuthenticationToken jwtAuth) {
         try {
             var userId = java.util.UUID.fromString(jwtAuth.getToken().getSubject());
-            var roleCode =  userService.getRoleCode(userService.findUserById(userId).roleId());
+            var roleCode = userService.getRoleCode(userService.findUserById(userId).roleId());
             return RolesEnum.valueOf(roleCode);
         } catch (Exception e) {
             log.debug("Failed to resolve caller role from JWT", e);

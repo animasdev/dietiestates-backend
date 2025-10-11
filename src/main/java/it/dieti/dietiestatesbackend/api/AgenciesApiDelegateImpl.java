@@ -3,7 +3,13 @@ package it.dieti.dietiestatesbackend.api;
 import it.dieti.dietiestatesbackend.api.model.Agency;
 import it.dieti.dietiestatesbackend.api.model.AgencyCreateRequest;
 import it.dieti.dietiestatesbackend.application.agency.AgencyOnboardingService;
+import it.dieti.dietiestatesbackend.application.exception.BadRequestException;
+import it.dieti.dietiestatesbackend.application.exception.ConflictException;
+import it.dieti.dietiestatesbackend.application.exception.ForbiddenException;
+import it.dieti.dietiestatesbackend.application.exception.UnauthorizedException;
 import it.dieti.dietiestatesbackend.application.onboarding.OnboardingException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -15,6 +21,7 @@ import java.util.UUID;
 @Service
 public class AgenciesApiDelegateImpl implements AgenciesApiDelegate {
     private final AgencyOnboardingService agencyOnboardingService;
+    private static final Logger log = LoggerFactory.getLogger(AgenciesApiDelegateImpl.class);
 
     public AgenciesApiDelegateImpl(AgencyOnboardingService agencyOnboardingService) {
         this.agencyOnboardingService = agencyOnboardingService;
@@ -24,7 +31,8 @@ public class AgenciesApiDelegateImpl implements AgenciesApiDelegate {
     public ResponseEntity<Agency> agenciesPost(AgencyCreateRequest agencyCreateRequest) {
         var auth = SecurityContextHolder.getContext().getAuthentication();
         if (!(auth instanceof JwtAuthenticationToken jwtAuth)) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            log.warn("Tentativo di completare profilo agenzia senza token");
+            throw UnauthorizedException.bearerTokenMissing();
         }
 
         var userId = UUID.fromString(jwtAuth.getToken().getSubject());
@@ -37,18 +45,32 @@ public class AgenciesApiDelegateImpl implements AgenciesApiDelegate {
             var agency = agencyOnboardingService.completeProfile(userId, command);
             return ResponseEntity.status(HttpStatus.CREATED).body(toApi(agency));
         } catch (OnboardingException ex) {
-            return ResponseEntity.status(mapStatus(ex.reason())).build();
-        } catch (IllegalArgumentException ex) {
-            return ResponseEntity.badRequest().build();
+            throw translateOnboardingException(ex, userId);
         }
     }
 
-    private HttpStatus mapStatus(OnboardingException.Reason reason) {
-        return switch (reason) {
-            case USER_NOT_FOUND -> HttpStatus.UNAUTHORIZED;
-            case ROLE_NOT_ALLOWED -> HttpStatus.FORBIDDEN;
-            case PROFILE_ALREADY_EXISTS, FIRST_ACCESS_ALREADY_COMPLETED -> HttpStatus.CONFLICT;
-            case AGENCY_NOT_FOUND -> HttpStatus.BAD_REQUEST;
+    private RuntimeException translateOnboardingException(OnboardingException ex, UUID userId) {
+        return switch (ex.reason()) {
+            case USER_NOT_FOUND -> {
+                log.warn("Utente {} non trovato durante onboarding agenzia", userId);
+                yield UnauthorizedException.userNotFound();
+            }
+            case ROLE_NOT_ALLOWED -> {
+                log.warn("Utente {} senza ruolo valido per onboarding agenzia", userId);
+                yield ForbiddenException.actionRequiresRole("AGENCY");
+            }
+            case PROFILE_ALREADY_EXISTS -> {
+                log.warn("Utente {} ha già un profilo agenzia", userId);
+                yield ConflictException.of("Profilo agenzia già completato.");
+            }
+            case FIRST_ACCESS_ALREADY_COMPLETED -> {
+                log.warn("Utente {} ha già completato il firstAccess", userId);
+                yield ConflictException.of("Profilo agenzia già confermato.");
+            }
+            case AGENCY_NOT_FOUND -> {
+                log.warn("Agenzia non trovata durante onboarding per utente {}", userId);
+                yield BadRequestException.of("Agenzia di riferimento non trovata.");
+            }
         };
     }
 

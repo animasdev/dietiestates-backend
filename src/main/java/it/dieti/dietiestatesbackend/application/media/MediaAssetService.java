@@ -1,5 +1,7 @@
 package it.dieti.dietiestatesbackend.application.media;
 
+import it.dieti.dietiestatesbackend.application.exception.BadRequestException;
+import it.dieti.dietiestatesbackend.application.exception.UnauthorizedException;
 import it.dieti.dietiestatesbackend.domain.media.MediaAsset;
 import it.dieti.dietiestatesbackend.domain.media.MediaAssetCategoryRepository;
 import it.dieti.dietiestatesbackend.domain.media.MediaAssetRepository;
@@ -34,22 +36,20 @@ public class MediaAssetService {
     @Transactional
     public MediaAsset upload(UUID userId, String categoryCode, MultipartFile file) {
         if (userId == null) {
-            throw new IllegalArgumentException("User id is required");
+            log.warn("Tentativo di upload media senza utente autenticato");
+            throw UnauthorizedException.bearerTokenMissing();
         }
+
         var normalizedCategory = normalize(categoryCode);
         var category = categoryRepository.findByCode(normalizedCategory)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown media category: " + categoryCode));
+                .orElseThrow(() -> {
+                    log.warn("Categoria media non valida '{}' per user {}", normalizedCategory, userId);
+                    return BadRequestException.forField("categoryCode", "Categoria media non valida.");
+                });
 
         validateFile(file);
-
         MediaStorageClient.StoredMedia stored;
-        try {
-            stored = storageClient.store(normalizedCategory, file);
-        } catch (RuntimeException ex) {
-            log.error("Failed to store media for user {} and category {}", userId, normalizedCategory, ex);
-            throw ex;
-        }
-
+        stored = storageClient.store(normalizedCategory, file);
         var asset = new MediaAsset(
                 null,
                 category.id(),
@@ -67,18 +67,25 @@ public class MediaAssetService {
 
     private void validateFile(MultipartFile file) {
         if (file == null || file.isEmpty()) {
-            throw new IllegalArgumentException("File is required");
+            log.warn("Upload media senza file allegato");
+            throw BadRequestException.forField("file", "Il campo 'file' è obbligatorio.");
         }
         if (file.getSize() > MAX_BYTES) {
-            throw new IllegalArgumentException("File exceeds maximum allowed size (5MB)");
+            log.warn("Upload media con dimensione {} bytes oltre il limite", file.getSize());
+            throw BadRequestException.forField("file", "Il file supera la dimensione massima consentita (5MB).");
         }
         var contentType = file.getContentType();
         if (contentType == null || !SUPPORTED_TYPES.contains(contentType.toLowerCase())) {
-            throw new IllegalArgumentException("Unsupported media type: " + contentType);
+            log.warn("Upload media con content-type non supportato: {}", contentType);
+            throw BadRequestException.forField("file", "Formato file non supportato. Usa JPEG, PNG o WEBP.");
         }
     }
 
     private String normalize(String input) {
-        return input == null ? "" : input.trim().toUpperCase();
+        if (input == null || input.trim().isEmpty()) {
+            log.warn("Upload media con categoryCode mancante");
+            throw BadRequestException.forField("categoryCode", "Il campo 'categoryCode' è obbligatorio.");
+        }
+        return input.trim().toUpperCase();
     }
 }

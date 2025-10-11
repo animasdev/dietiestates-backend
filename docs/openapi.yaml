@@ -42,7 +42,7 @@ components:
     Sort:
       name: sort
       in: query
-      description: Sort expression, e.g. 'created_at,desc' or 'price_cents,asc'
+      description: Sort expression, e.g. 'createdAt,desc' or 'priceCents,asc'
       required: false
       schema: { type: string }
   schemas:
@@ -67,12 +67,12 @@ components:
           items: { $ref: '#/components/schemas/Listing' }
     Listing:
       type: object
-      required: [id, title, listing_type, status, city, created_at]
+      required: [id, title, listingType, status, city, createdAt]
       properties:
         id: { type: string, format: uuid }
-        agency_id: { type: string, format: uuid }
-        owner_agent_id: { type: string, format: uuid }
-        listing_type:
+        agencyId: { type: string, format: uuid }
+        ownerAgentId: { type: string, format: uuid }
+        listingType:
           type: string
           description: Vendita/Affitto
           enum: [SALE, RENT]
@@ -81,14 +81,14 @@ components:
           enum: [DRAFT, PUBLISHED, PENDING_DELETE, DELETED]
         title: { type: string }
         description: { type: string }
-        price_cents: { type: integer, nullable: true }
+        priceCents: { type: integer, nullable: true }
         city: { type: string }
         address: { type: string, nullable: true }
-        postal_code: { type: string, nullable: true }
+        postalCode: { type: string, nullable: true }
         rooms: { type: integer, nullable: true }
-        size_sqm: { type: number, format: float, nullable: true }
+        sizeSqm: { type: number, format: float, nullable: true }
         floor: { type: integer, nullable: true }
-        energy_class: { type: string, nullable: true }
+        energyClass: { type: string, nullable: true }
         features:
           type: array
           items: { type: string }
@@ -100,23 +100,23 @@ components:
         photos:
           type: array
           items: { $ref: '#/components/schemas/ListingPhoto' }
-        created_at: { type: string, format: date-time }
-        updated_at: { type: string, format: date-time }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
     ListingCreate:
       type: object
-      required: [title, listing_type, description]
+      required: [title, listingType, description]
       properties:
         title: { type: string }
         description: { type: string }
-        listing_type: { type: string, enum: [SALE, RENT] }
-        price_cents: { type: integer, nullable: true }
+        listingType: { type: string, enum: [SALE, RENT] }
+        priceCents: { type: integer, nullable: true }
         city: { type: string }
         address: { type: string }
-        postal_code: { type: string }
+        postalCode: { type: string }
         rooms: { type: integer }
-        size_sqm: { type: number, format: float }
+        sizeSqm: { type: number, format: float }
         floor: { type: integer }
-        energy_class: { type: string }
+        energyClass: { type: string }
         features:
           type: array
           items: { type: string }
@@ -148,22 +148,22 @@ components:
         displayName: {type: string}
         email: {type: string, format: email}
         role: {type: string}
-        agency_profile:
+        agencyProfile:
           $ref: '#/components/schemas/UserInfoAgencyProfile'
-        agent_profile:
+        agentProfile:
           $ref: '#/components/schemas/UserInfoAgentProfile'
     UserInfoAgencyProfile:
       type: object
       properties:
         name: { type: string }
         description: { type: string }
-        logo_media_id: { type: string, format: uuid, nullable: true }
+        logoMediaId: { type: string, format: uuid, nullable: true }
     UserInfoAgentProfile:
       type: object
       properties:
-        agency_id: { type: string, format: uuid }
-        rea_number: { type: string }
-        profile_photo_media_id: { type: string, format: uuid, nullable: true }
+        agencyId: { type: string, format: uuid }
+        reaNumber: { type: string }
+        profilePhotoMediaId: { type: string, format: uuid, nullable: true }
     AgencyCreateRequest:
       type: object
       required: [name, description]
@@ -176,73 +176,73 @@ components:
           type: string
           minLength: 1
           description: Descrizione breve dell'agenzia
-        logo_media_id:
+        logoMediaId:
           type: string
           format: uuid
           nullable: true
           description: Identificativo dell'asset già caricato tramite media API
     Agency:
       type: object
-      required: [id, name, description, user_id, created_at, updated_at]
+      required: [id, name, description, userId, createdAt, updatedAt]
       properties:
         id: { type: string, format: uuid }
         name: { type: string }
         description: { type: string }
-        user_id: { type: string, format: uuid }
-        logo_media_id:
+        userId: { type: string, format: uuid }
+        logoMediaId:
           type: string
           format: uuid
           nullable: true
-        approved_by:
+        approvedBy:
           type: string
           format: uuid
           nullable: true
-        approved_at:
+        approvedAt:
           type: string
           format: date-time
           nullable: true
-        created_at: { type: string, format: date-time }
-        updated_at: { type: string, format: date-time }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
     AgentCreateRequest:
       type: object
-      required: [agency_id, rea_number]
+      required: [agencyId, reaNumber]
       properties:
-        agency_id:
+        agencyId:
           type: string
           format: uuid
           description: Agenzia a cui l'agente è associato
-        rea_number:
+        reaNumber:
           type: string
           minLength: 1
           description: Numero REA dell'agente
-        profile_photo_media_id:
+        profilePhotoMediaId:
           type: string
           format: uuid
           nullable: true
           description: Identificativo dell'asset foto profilo già caricato
     Agent:
       type: object
-      required: [id, user_id, agency_id, rea_number, created_at, updated_at]
+      required: [id, userId, agencyId, reaNumber, createdAt, updatedAt]
       properties:
         id: { type: string, format: uuid }
-        user_id: { type: string, format: uuid }
-        agency_id: { type: string, format: uuid }
-        rea_number: { type: string }
-        profile_photo_media_id:
+        userId: { type: string, format: uuid }
+        agencyId: { type: string, format: uuid }
+        reaNumber: { type: string }
+        profilePhotoMediaId:
           type: string
           format: uuid
           nullable: true
-        created_at: { type: string, format: date-time }
-        updated_at: { type: string, format: date-time }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
     MediaUploadResponse:
       type: object
-      required: [asset_id, public_url]
+      required: [assetId, publicUrl]
       properties:
-        asset_id: { type: string, format: uuid }
-        public_url: { type: string, format: uri }
-        mime_type: { type: string }
-        width_px: { type: integer, nullable: true }
-        height_px: { type: integer, nullable: true }
+        assetId: { type: string, format: uuid }
+        publicUrl: { type: string, format: uri }
+        mimeType: { type: string }
+        widthPx: { type: integer, nullable: true }
+        heightPx: { type: integer, nullable: true }
       description: Risposta con i metadati principali dell'asset memorizzato.
 paths:
   /auth/login:
@@ -267,9 +267,9 @@ paths:
               schema:
                 type: object
                 properties:
-                  access_token: { type: string }
-                  refresh_token: { type: string }
-                  first_access:
+                  accessToken: { type: string }
+                  refreshToken: { type: string }
+                  firstAccess:
                     type: boolean
                     description: true se l'utente è al primo accesso e deve cambiare password
         '401':
@@ -287,9 +287,9 @@ paths:
           application/json:
             schema:
               type: object
-              required: [refresh_token]
+              required: [refreshToken]
               properties:
-                refresh_token: { type: string }
+                refreshToken: { type: string }
       responses:
         '200':
           description: New access token
@@ -298,8 +298,8 @@ paths:
               schema:
                 type: object
                 properties:
-                  access_token: { type: string }
-                  refresh_token: { type: string }
+                  accessToken: { type: string }
+                  refreshToken: { type: string }
         '401':
           description: Invalid refresh token
           content:
@@ -330,10 +330,10 @@ paths:
           application/json:
             schema:
               type: object
-              required: [token, new_password]
+              required: [token, newPassword]
               properties:
                 token: { type: string }
-                new_password: { type: string, format: password, minLength: 8 }
+                newPassword: { type: string, format: password, minLength: 8 }
       responses:
         '200': { description: Password updated }
         '400':
@@ -402,10 +402,10 @@ paths:
           application/json:
             schema:
               type: object
-              required: [ old_password, new_password ]
+              required: [ oldPassword, newPassword ]
               properties:
-                old_password: { type: string, format: password, minLength: 8 }
-                new_password: { type: string, format: password, minLength: 8 }
+                oldPassword: { type: string, format: password, minLength: 8 }
+                newPassword: { type: string, format: password, minLength: 8 }
       responses:
         '200': { description: password changed }
         '400':
@@ -419,7 +419,7 @@ paths:
       tags: [Listings]
       summary: Search listings (supports geo filters)
       description: |
-        Accepts filters for type, price, city, features, and optional geospatial radius (lat,lng,radius_m).
+        Accepts filters for type, price, city, features, and optional geospatial radius (lat,lng,radiusMeters).
         Implements pagination and sorting. Matches R3 and 2-design search notes.
       security:
         - {}
@@ -430,16 +430,16 @@ paths:
         - name: city
           in: query
           schema: { type: string }
-        - name: min_price
+        - name: minPrice
           in: query
           schema: { type: integer, minimum: 0 }
-        - name: max_price
+        - name: maxPrice
           in: query
           schema: { type: integer, minimum: 0 }
         - name: rooms
           in: query
           schema: { type: integer, minimum: 0 }
-        - name: energy_class
+        - name: energyClass
           in: query
           schema: { type: string }
         - name: features
@@ -459,7 +459,7 @@ paths:
         - name: lng
           in: query
           schema: { type: number, format: float }
-        - name: radius_m
+        - name: radiusMeters
           in: query
           schema: { type: integer, minimum: 50, maximum: 100000 }
         - $ref: '#/components/parameters/Page'
@@ -694,7 +694,7 @@ paths:
       description: |
         Utilizzato dagli utenti con ruolo `AGENCY` dopo la prima autenticazione per censire i
         dettagli dell'agenzia. L'ID proprietario viene derivato dal token (`sub`) e il campo
-        `first_access` dell'utente viene impostato a `false` al termine del flusso.
+        `firstAccess` dell'utente viene impostato a `false` al termine del flusso.
       security:
         - bearerAuth: []
       requestBody:
@@ -736,7 +736,7 @@ paths:
       description: |
         Utilizzato dagli utenti con ruolo `AGENT` dopo la prima autenticazione per associare il
         proprio profilo a un'agenzia e fornire il numero REA. L'ID utente è ricavato dal token e
-        `first_access` viene impostato a `false` quando l'operazione va a buon fine.
+        `firstAccess` viene impostato a `false` quando l'operazione va a buon fine.
       security:
         - bearerAuth: []
       requestBody:
@@ -778,8 +778,8 @@ paths:
       description: |
         Endpoint destinato ad upload di loghi agenzia e foto profilo agente.
         Supporta file `image/jpeg`, `image/png`, `image/webp` (max 5MB). Il file viene salvato su filesystem locale
-        (`storage/media/<categoria>/...`) e reso disponibile tramite `public_url`.
-        Necessita autenticazione; l'asset viene attribuito all'utente proprietario (`created_by`).
+        (`storage/media/<categoria>/...`) e reso disponibile tramite `publicUrl`.
+        Necessita autenticazione; l'asset viene attribuito all'utente proprietario (`createdBy`).
       security:
         - bearerAuth: []
       requestBody:
@@ -788,9 +788,9 @@ paths:
           multipart/form-data:
             schema:
               type: object
-              required: [category_code, file]
+              required: [categoryCode, file]
               properties:
-                category_code:
+                categoryCode:
                   type: string
                   description: Codice categoria asset (es. `AGENCY_LOGO`, `AGENT_AVATAR`).
                 file:

@@ -1,5 +1,7 @@
 package it.dieti.dietiestatesbackend.application.agency;
 
+import it.dieti.dietiestatesbackend.application.exception.ApplicationHttpException;
+import it.dieti.dietiestatesbackend.application.exception.BadRequestException;
 import it.dieti.dietiestatesbackend.application.onboarding.OnboardingException;
 import it.dieti.dietiestatesbackend.domain.agency.Agency;
 import it.dieti.dietiestatesbackend.domain.agency.AgencyRepository;
@@ -7,9 +9,13 @@ import it.dieti.dietiestatesbackend.domain.user.User;
 import it.dieti.dietiestatesbackend.domain.user.UserRepository;
 import it.dieti.dietiestatesbackend.domain.user.role.RoleRepository;
 import it.dieti.dietiestatesbackend.domain.user.role.RolesEnum;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -18,6 +24,7 @@ public class AgencyOnboardingService {
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final AgencyRepository agencyRepository;
+    private static final Logger log = LoggerFactory.getLogger(AgencyOnboardingService.class);
 
     public AgencyOnboardingService(UserRepository userRepository,
                                    RoleRepository roleRepository,
@@ -51,8 +58,17 @@ public class AgencyOnboardingService {
 
         var name = normalize(command.name());
         var description = normalize(command.description());
-        if (name.isBlank() || description.isBlank()) {
-            throw new IllegalArgumentException("Name and description are required");
+
+        List<ApplicationHttpException.FieldErrorDetail> fieldErrors = new ArrayList<>();
+        if (name.isBlank()) {
+            fieldErrors.add(new ApplicationHttpException.FieldErrorDetail("name", "Il campo 'name' è obbligatorio."));
+        }
+        if (description.isBlank()) {
+            fieldErrors.add(new ApplicationHttpException.FieldErrorDetail("description", "Il campo 'description' è obbligatorio."));
+        }
+        if (!fieldErrors.isEmpty()) {
+            log.warn("Completamento profilo agenzia non valido per user {}: campi mancanti", userId);
+            throw BadRequestException.forFields("Richiesta non valida: completare tutti i campi obbligatori.", fieldErrors);
         }
 
         var agency = new Agency(

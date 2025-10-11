@@ -1,5 +1,7 @@
 package it.dieti.dietiestatesbackend.application.agent;
 
+import it.dieti.dietiestatesbackend.application.exception.ApplicationHttpException;
+import it.dieti.dietiestatesbackend.application.exception.BadRequestException;
 import it.dieti.dietiestatesbackend.application.onboarding.OnboardingException;
 import it.dieti.dietiestatesbackend.domain.agent.Agent;
 import it.dieti.dietiestatesbackend.domain.agent.AgentRepository;
@@ -8,9 +10,13 @@ import it.dieti.dietiestatesbackend.domain.user.User;
 import it.dieti.dietiestatesbackend.domain.user.UserRepository;
 import it.dieti.dietiestatesbackend.domain.user.role.RoleRepository;
 import it.dieti.dietiestatesbackend.domain.user.role.RolesEnum;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -20,6 +26,7 @@ public class AgentOnboardingService {
     private final RoleRepository roleRepository;
     private final AgentRepository agentRepository;
     private final AgencyRepository agencyRepository;
+    private static final Logger log = LoggerFactory.getLogger(AgentOnboardingService.class);
 
     public AgentOnboardingService(UserRepository userRepository,
                                   RoleRepository roleRepository,
@@ -52,14 +59,21 @@ public class AgentOnboardingService {
         agentRepository.findByUserId(userId)
                 .ifPresent(a -> { throw new OnboardingException(OnboardingException.Reason.PROFILE_ALREADY_EXISTS, "Agent profile already exists"); });
 
-        var agencyId = Objects.requireNonNull(command.agencyId(), "agencyId is required");
+        var agencyId = command.agencyId();
+        if (agencyId == null) {
+            log.warn("Completamento profilo agente non valido per user {}: agencyId mancante", userId);
+            throw BadRequestException.forField("agencyId", "Il campo 'agencyId' è obbligatorio.");
+        }
         if (agencyRepository.findById(agencyId).isEmpty()) {
             throw new OnboardingException(OnboardingException.Reason.AGENCY_NOT_FOUND, "Agency not found");
         }
 
         var reaNumber = normalize(command.reaNumber());
         if (reaNumber.isBlank()) {
-            throw new IllegalArgumentException("REA number is required");
+            List<ApplicationHttpException.FieldErrorDetail> errors = new ArrayList<>();
+            errors.add(new ApplicationHttpException.FieldErrorDetail("reaNumber", "Il campo 'reaNumber' è obbligatorio."));
+            log.warn("Completamento profilo agente non valido per user {}: reaNumber mancante", userId);
+            throw BadRequestException.forFields("Richiesta non valida: completare tutti i campi obbligatori.", errors);
         }
 
         var agent = new Agent(

@@ -3,14 +3,11 @@ package it.dieti.dietiestatesbackend.api;
 import it.dieti.dietiestatesbackend.api.model.Listing;
 import it.dieti.dietiestatesbackend.api.model.ListingCreate;
 import it.dieti.dietiestatesbackend.api.model.ListingGeo;
-import it.dieti.dietiestatesbackend.application.exception.ApplicationHttpException;
 import it.dieti.dietiestatesbackend.application.exception.BadRequestException;
 import it.dieti.dietiestatesbackend.application.exception.InternalServerErrorException;
-import it.dieti.dietiestatesbackend.application.exception.listing.AgentProfileRequiredException;
-import it.dieti.dietiestatesbackend.application.exception.listing.CoordinatesValidationException;
+import it.dieti.dietiestatesbackend.application.exception.UnauthorizedException;
 import it.dieti.dietiestatesbackend.application.exception.listing.ListingStatusUnavailableException;
 import it.dieti.dietiestatesbackend.application.exception.listing.ListingTypeNotSupportedException;
-import it.dieti.dietiestatesbackend.application.exception.listing.PriceValidationException;
 import it.dieti.dietiestatesbackend.application.listing.ListingCreationService;
 import it.dieti.dietiestatesbackend.domain.listing.status.ListingStatusesEnum;
 import org.locationtech.jts.geom.Point;
@@ -42,27 +39,16 @@ public class ListingsApiDelegateImpl implements ListingsApiDelegate {
     public ResponseEntity<Listing> listingsPost(ListingCreate listingCreate) {
         var auth = SecurityContextHolder.getContext().getAuthentication();
         if (!(auth instanceof JwtAuthenticationToken jwtAuth)) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            log.warn("Accesso non autorizzato a listingsPost: token mancante");
+            throw UnauthorizedException.bearerTokenMissing();
         }
 
-        if (listingCreate.getListingType() == null) {
-            var message = "Il campo 'listing_type' è obbligatorio.";
-            throw BadRequestException.forField("listing_type", message);
-        }
-        if (listingCreate.getGeo() == null) {
-            var message = "Il campo 'geo' è obbligatorio.";
-            throw BadRequestException.forField("geo", message);
-        }
+        requireField(listingCreate.getListingType(), "listingType");
+        requireField(listingCreate.getGeo(), "geo");
 
         var geo = listingCreate.getGeo();
-        if (geo.getLat() == null) {
-            var message = "Il campo 'geo.lat' è obbligatorio.";
-            throw BadRequestException.forField("geo.lat", message);
-        }
-        if (geo.getLng() == null) {
-            var message = "Il campo 'geo.lng' è obbligatorio.";
-            throw BadRequestException.forField("geo.lng", message);
-        }
+        requireField(geo.getLat(), "geo.lat");
+        requireField(geo.getLng(), "geo.lng");
 
         Long priceCents = listingCreate.getPriceCents() != null
                 ? listingCreate.getPriceCents().longValue()
@@ -94,24 +80,23 @@ public class ListingsApiDelegateImpl implements ListingsApiDelegate {
             var acceptedTypes = Arrays.stream(ListingCreate.ListingTypeEnum.values())
                     .map(ListingCreate.ListingTypeEnum::getValue)
                     .collect(Collectors.joining(", "));
-            var message = "Listing type non supportato. Tipi ammessi: " + acceptedTypes + ".";
+            var message = "listingType non supportato. Tipi ammessi: " + acceptedTypes + ".";
             log.warn("Listing type non supportato ({}) per user {}", ex.requestedType(), userId);
-            throw BadRequestException.forField("listing_type", message);
+            throw BadRequestException.forField("listingType", message);
         } catch (ListingStatusUnavailableException ex) {
             log.error("Listing status {} non disponibile durante la creazione (user {})", ex.statusCode(), userId, ex);
-            throw ex;
-        } catch (AgentProfileRequiredException | PriceValidationException | CoordinatesValidationException ex) {
-            log.warn("Errore validazione business per user {}: {}", userId, ex.getMessage());
-            throw ex;
-        } catch (ApplicationHttpException ex) {
-            log.warn("Errore applicativo nella creazione listing per user {}: {}", userId, ex.getMessage());
-            throw ex;
-        } catch (IllegalArgumentException ex) {
-            log.warn("Richiesta listing non valida per user {}: {}", userId, ex.getMessage());
-            throw BadRequestException.of(ex.getMessage());
+            throw new InternalServerErrorException("Si è verificato un errore interno. Riprova più tardi.");
         } catch (IllegalStateException ex) {
             log.error("Errore interno durante la creazione listing per user {}", userId, ex);
             throw new InternalServerErrorException("Si è verificato un errore interno. Riprova più tardi.");
+        }
+    }
+
+    private void requireField(Object value, String field) {
+        if (value == null || (value instanceof String str && str.isBlank())) {
+            var message = "Il campo '" + field + "' è obbligatorio.";
+            log.warn("Validazione listingCreate fallita: {}", message);
+            throw BadRequestException.forField(field, message);
         }
     }
 

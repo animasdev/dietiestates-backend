@@ -5,6 +5,7 @@ import it.dieti.dietiestatesbackend.application.media.MediaAssetService;
 import it.dieti.dietiestatesbackend.domain.media.MediaAsset;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import it.dieti.dietiestatesbackend.application.exception.UnauthorizedException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -28,19 +29,13 @@ public class MediaApiDelegateImpl implements MediaApiDelegate {
     public ResponseEntity<MediaUploadResponse> mediaUploadsPost(String categoryCode, MultipartFile file) {
         var auth = SecurityContextHolder.getContext().getAuthentication();
         if (!(auth instanceof JwtAuthenticationToken jwtAuth)) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            log.warn("Tentativo upload media senza token");
+            throw UnauthorizedException.bearerTokenMissing();
         }
         var userId = UUID.fromString(jwtAuth.getToken().getSubject());
-        try {
-            MediaAsset asset = mediaAssetService.upload(userId, categoryCode, file);
-            return ResponseEntity.status(HttpStatus.CREATED).body(toResponse(asset));
-        } catch (IllegalArgumentException ex) {
-            log.warn("mediaUploadsPost validation failed for user {}: {}", userId, ex.getMessage());
-            return ResponseEntity.badRequest().build();
-        } catch (RuntimeException ex) {
-            log.error("mediaUploadsPost failed for user {}", userId, ex);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
+        MediaAsset asset = mediaAssetService.upload(userId, categoryCode, file);
+        return ResponseEntity.status(HttpStatus.CREATED).body(toResponse(asset));
+
     }
 
     private MediaUploadResponse toResponse(MediaAsset asset) {
