@@ -3,9 +3,7 @@ info:
   title: DietiEstates25 API
   version: 0.1.0
   description: |
-    REST API for DietiEstates25, aligned with course requisiti (documentazione/1-requisiti.md)
-    and architecture (documentazione/2-design.md). Includes JWT security, listings lifecycle
-    with soft delete and geo-enabled search.
+    REST API for DietiEstates25.
 servers:
   - url: https://api.example.com
     description: Production (placeholder)
@@ -67,7 +65,7 @@ components:
           items: { $ref: '#/components/schemas/Listing' }
     Listing:
       type: object
-      required: [id, title, listingType, status, city, createdAt]
+      required: [id, title, listingType, status, city, geo, createdAt]
       properties:
         id: { type: string, format: uuid }
         agencyId: { type: string, format: uuid }
