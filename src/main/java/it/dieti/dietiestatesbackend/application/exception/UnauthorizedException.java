@@ -19,4 +19,8 @@ public class UnauthorizedException extends ApplicationHttpException {
     public static UnauthorizedException userNotFound() {
         return new UnauthorizedException("Utente non trovato o non più valido.");
     }
+
+    public static UnauthorizedException notTheOwner() {
+        return new UnauthorizedException("Utente non è il proprietario dela risorsa");
+    }
 }
