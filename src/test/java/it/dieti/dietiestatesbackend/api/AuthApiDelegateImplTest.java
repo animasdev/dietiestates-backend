@@ -2,6 +2,7 @@ package it.dieti.dietiestatesbackend.api;
 
 import it.dieti.dietiestatesbackend.api.model.AuthSignUpRequestPostRequest;
 import it.dieti.dietiestatesbackend.application.auth.AuthService;
+import it.dieti.dietiestatesbackend.application.exception.ForbiddenException;
 import it.dieti.dietiestatesbackend.application.user.UserService;
 import it.dieti.dietiestatesbackend.domain.user.User;
 import org.junit.jupiter.api.AfterEach;
@@ -20,6 +21,7 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
@@ -151,14 +153,11 @@ class AuthApiDelegateImplTest {
         req.setDisplayName("User");
         req.setRoleCode("USER");
 
-        delegate.authSignUpRequestPost(req);
+        assertThatThrownBy(() -> delegate.authSignUpRequestPost(req))
+                .isInstanceOf(ForbiddenException.class)
+                .hasMessageContaining("Permesso negato");
 
-        ArgumentCaptor<String> roleArg = ArgumentCaptor.forClass(String.class);
-        verify(authService, times(1))
-                .requestSignUp(eq("user@example.com"), eq("User"), roleArg.capture());
-
-        // Policy currently does not allow USER→USER; delegate passes null so service defaults to USER
-        assertThat(roleArg.getValue()).isNull();
+        verify(authService, never()).requestSignUp(any(), any(), any());
     }
 
     @Test
@@ -180,14 +179,18 @@ class AuthApiDelegateImplTest {
         req3.setDisplayName("A3");
         req3.setRoleCode("AGENT");
 
-        delegate.authSignUpRequestPost(req1);
-        delegate.authSignUpRequestPost(req2);
-        delegate.authSignUpRequestPost(req3);
+        assertThatThrownBy(() -> delegate.authSignUpRequestPost(req1))
+                .isInstanceOf(ForbiddenException.class)
+                .hasMessageContaining("Permesso negato");
 
-        ArgumentCaptor<String> roleArg = ArgumentCaptor.forClass(String.class);
-        verify(authService, times(3))
-                .requestSignUp(any(), any(), roleArg.capture());
+        assertThatThrownBy(() -> delegate.authSignUpRequestPost(req2))
+                .isInstanceOf(ForbiddenException.class)
+                .hasMessageContaining("Permesso negato");
 
-        assertThat(roleArg.getAllValues()).containsExactly(null, null, null);
+        assertThatThrownBy(() -> delegate.authSignUpRequestPost(req3))
+                .isInstanceOf(ForbiddenException.class)
+                .hasMessageContaining("Permesso negato");
+
+        verify(authService, never()).requestSignUp(any(), any(), any());
     }
 }
