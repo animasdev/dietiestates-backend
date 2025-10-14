@@ -2,6 +2,8 @@ package it.dieti.dietiestatesbackend.application.listing;
 
 import it.dieti.dietiestatesbackend.application.exception.ApplicationHttpException;
 import it.dieti.dietiestatesbackend.application.exception.BadRequestException;
+import it.dieti.dietiestatesbackend.application.exception.InternalServerErrorException;
+import it.dieti.dietiestatesbackend.application.exception.NotFoundException;
 import it.dieti.dietiestatesbackend.application.exception.listing.AgentProfileRequiredException;
 import it.dieti.dietiestatesbackend.application.exception.listing.CoordinatesValidationException;
 import it.dieti.dietiestatesbackend.application.exception.listing.ListingStatusUnavailableException;
@@ -12,6 +14,8 @@ import it.dieti.dietiestatesbackend.domain.listing.Listing;
 import it.dieti.dietiestatesbackend.domain.listing.ListingRepository;
 import it.dieti.dietiestatesbackend.domain.listing.ListingTypeRepository;
 import it.dieti.dietiestatesbackend.domain.listing.status.ListingStatusRepository;
+import it.dieti.dietiestatesbackend.domain.listing.ListingType;
+import it.dieti.dietiestatesbackend.domain.listing.status.ListingStatus;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.PrecisionModel;
@@ -63,6 +67,12 @@ public class ListingCreationService {
             String postalCode,
             double latitude,
             double longitude
+    ) {}
+
+    public record ListingDetails(
+            it.dieti.dietiestatesbackend.domain.listing.Listing listing,
+            ListingType listingType,
+            ListingStatus listingStatus
     ) {}
 
     @Transactional
@@ -141,6 +151,36 @@ public class ListingCreationService {
         );
 
         return listingRepository.save(listing);
+    }
+
+    public ListingDetails getListingDetails(UUID listingId) {
+        Objects.requireNonNull(listingId, "listingId is required");
+
+        var listing = listingRepository.findById(listingId)
+                .orElseThrow(() -> {
+                    log.warn("Annuncio {} non trovato durante recupero dettagli", listingId);
+                    return NotFoundException.resourceNotFound("Annuncio", listingId);
+                });
+
+        ListingType listingType = null;
+        if (listing.listingTypeId() != null) {
+            listingType = listingTypeRepository.findById(listing.listingTypeId())
+                    .orElseThrow(() -> {
+                        log.error("Annuncio '{}' con listingType '{}' inesistente", listingId, listing.listingTypeId());
+                        return new InternalServerErrorException("Si è verificato un errore interno. Riprova più tardi.");
+                    });
+        }
+
+        ListingStatus listingStatus = null;
+        if (listing.statusId() != null) {
+            listingStatus = listingStatusRepository.findById(listing.statusId())
+                    .orElseThrow(() -> {
+                        log.error("Annuncio {} con status {} inesistente", listingId, listing.statusId());
+                        return new InternalServerErrorException("Si è verificato un errore interno. Riprova più tardi.");
+                    });
+        }
+
+        return new ListingDetails(listing, listingType, listingStatus);
     }
 
     private void validateCoordinates(double latitude, double longitude) {

@@ -7,6 +7,7 @@ import it.dieti.dietiestatesbackend.application.exception.listing.AgentProfileRe
 import it.dieti.dietiestatesbackend.application.media.MediaAssetService;
 import it.dieti.dietiestatesbackend.domain.agent.AgentRepository;
 import it.dieti.dietiestatesbackend.domain.listing.ListingRepository;
+import it.dieti.dietiestatesbackend.domain.media.MediaAssetRepository;
 import it.dieti.dietiestatesbackend.domain.media.listing.ListingMedia;
 import it.dieti.dietiestatesbackend.domain.media.listing.ListingMediaRepository;
 import org.slf4j.Logger;
@@ -20,6 +21,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -32,15 +34,18 @@ public class ListingMediaService {
     private final ListingRepository listingRepository;
     private final MediaAssetService mediaAssetService;
     private final ListingMediaRepository listingMediaRepository;
+    private final MediaAssetRepository mediaAssetRepository;
     private final AgentRepository agentRepository;
 
     public ListingMediaService(ListingRepository listingRepository,
                                MediaAssetService mediaAssetService,
                                ListingMediaRepository listingMediaRepository,
+                               MediaAssetRepository mediaAssetRepository,
                                AgentRepository agentRepository) {
         this.listingRepository = listingRepository;
         this.mediaAssetService = mediaAssetService;
         this.listingMediaRepository = listingMediaRepository;
+        this.mediaAssetRepository = mediaAssetRepository;
         this.agentRepository = agentRepository;
     }
 
@@ -110,4 +115,18 @@ public class ListingMediaService {
             }
         }
     }
+
+    public List<ListingPhotoView> getListingPhotos(UUID listingId) {
+        return listingMediaRepository.findByListingId(listingId).stream()
+                .map(media -> mediaAssetRepository.findById(media.mediaId())
+                        .map(asset -> new ListingPhotoView(media.id(), asset.publicUrl(), media.sortOrder()))
+                        .orElseGet(() -> {
+                            log.warn("Asset {} non trovato durante fetch foto listing {}", media.mediaId(), listingId);
+                            return null;
+                        }))
+                .filter(Objects::nonNull)
+                .toList();
+    }
+
+    public record ListingPhotoView(UUID id, String publicUrl, Integer position) {}
 }
