@@ -2,6 +2,8 @@ package it.dieti.dietiestatesbackend.infrastructure.persistence.jpa.listing;
 
 import it.dieti.dietiestatesbackend.domain.listing.status.ListingStatus;
 import it.dieti.dietiestatesbackend.domain.listing.status.ListingStatusRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
@@ -9,6 +11,7 @@ import java.util.UUID;
 
 @Repository
 public class ListingStatusRepositoryJpaAdapter implements ListingStatusRepository {
+    private static final Logger log = LoggerFactory.getLogger(ListingStatusRepositoryJpaAdapter.class);
     private final ListingStatusJpaRepository jpaRepository;
 
     public ListingStatusRepositoryJpaAdapter(ListingStatusJpaRepository jpaRepository) {
@@ -26,6 +29,7 @@ public class ListingStatusRepositoryJpaAdapter implements ListingStatusRepositor
     }
 
     private ListingStatus toDomain(ListingStatusEntity entity) {
+        log.trace("toDomain({})", entity);
         return new ListingStatus(
                 entity.getId(),
                 entity.getCode(),

@@ -107,6 +107,7 @@ components:
         title: { type: string }
         description: { type: string }
         listingType: { type: string, enum: [SALE, RENT] }
+        isPublished: {type: boolean, default: false }
         priceCents: { type: integer, nullable: true }
         city: { type: string }
         address: { type: string }

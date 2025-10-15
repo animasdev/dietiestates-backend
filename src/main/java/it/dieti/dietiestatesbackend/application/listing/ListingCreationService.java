@@ -16,6 +16,7 @@ import it.dieti.dietiestatesbackend.domain.listing.ListingTypeRepository;
 import it.dieti.dietiestatesbackend.domain.listing.status.ListingStatusRepository;
 import it.dieti.dietiestatesbackend.domain.listing.ListingType;
 import it.dieti.dietiestatesbackend.domain.listing.status.ListingStatus;
+import it.dieti.dietiestatesbackend.domain.listing.status.ListingStatusesEnum;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.PrecisionModel;
@@ -35,7 +36,8 @@ import java.util.UUID;
 public class ListingCreationService {
     private static final GeometryFactory GEOMETRY_FACTORY = new GeometryFactory(new PrecisionModel(), 4326);
     private static final String DEFAULT_CURRENCY = "EUR";
-    private static final String DEFAULT_STATUS_CODE = "DRAFT";
+    private static final String DRAFT_STATUS_CODE = ListingStatusesEnum.DRAFT.getDescription();
+    private static final String PUBLISHED_STATUS_CODE = ListingStatusesEnum.PUBLISHED.getDescription();
 
     private final ListingRepository listingRepository;
     private final ListingTypeRepository listingTypeRepository;
@@ -66,7 +68,8 @@ public class ListingCreationService {
             String city,
             String postalCode,
             double latitude,
-            double longitude
+            double longitude,
+            boolean isPublished
     ) {}
 
     public record ListingDetails(
@@ -110,8 +113,9 @@ public class ListingCreationService {
         var listingType = listingTypeRepository.findByCode(typeCode)
                 .orElseThrow(() -> new ListingTypeNotSupportedException(typeCode));
 
-        var status = listingStatusRepository.findByCode(DEFAULT_STATUS_CODE)
-                .orElseThrow(() -> new ListingStatusUnavailableException(DEFAULT_STATUS_CODE));
+        var statusString = command.isPublished() ? PUBLISHED_STATUS_CODE : DRAFT_STATUS_CODE;
+        var status = listingStatusRepository.findByCode(statusString)
+                .orElseThrow(() -> new ListingStatusUnavailableException(statusString));
 
         Long priceValue = command.priceCents();
         if (priceValue == null) {
@@ -149,7 +153,7 @@ public class ListingCreationService {
                 null,
                 null
         );
-
+        log.info("Listing created {}", listing);
         return listingRepository.save(listing);
     }
 

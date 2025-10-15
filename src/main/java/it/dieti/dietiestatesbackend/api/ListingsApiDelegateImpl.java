@@ -13,7 +13,6 @@ import it.dieti.dietiestatesbackend.application.exception.listing.ListingStatusU
 import it.dieti.dietiestatesbackend.application.exception.listing.ListingTypeNotSupportedException;
 import it.dieti.dietiestatesbackend.application.listing.ListingCreationService;
 import it.dieti.dietiestatesbackend.application.media.listing.ListingMediaService;
-import it.dieti.dietiestatesbackend.domain.listing.status.ListingStatusesEnum;
 import org.locationtech.jts.geom.Point;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -76,13 +75,13 @@ public class ListingsApiDelegateImpl implements ListingsApiDelegate {
                 listingCreate.getCity(),
                 listingCreate.getPostalCode(),
                 geo.getLat(),
-                geo.getLng()
+                geo.getLng(),
+                listingCreate.getIsPublished()
         );
 
         try {
             var listing = listingCreationService.createListingForUser(userId, command);
-            var typeCode = listingCreate.getListingType();
-            return ResponseEntity.status(HttpStatus.CREATED).body(toApi(listing,ListingStatusesEnum.DRAFT.getDescription(),typeCode.getValue(),List.of()));
+            return ResponseEntity.status(HttpStatus.CREATED).body(getFullListing(listing.id()));
         } catch (ListingTypeNotSupportedException ex) {
             var acceptedTypes = Arrays.stream(ListingCreate.ListingTypeEnum.values())
                     .map(ListingCreate.ListingTypeEnum::getValue)
@@ -104,9 +103,14 @@ public class ListingsApiDelegateImpl implements ListingsApiDelegate {
     public ResponseEntity<Listing> listingsIdGet(
             @Parameter(name = "id", description = "", required = true, in = ParameterIn.PATH) UUID id
     ){
+        var body = getFullListing(id);
+        return ResponseEntity.status(HttpStatus.OK).body(body);
+    }
+
+    private Listing getFullListing(UUID id) {
         var listingDetails = listingCreationService.getListingDetails(id);
         var photos = listingMediaService.getListingPhotos(id);
-        return ResponseEntity.status(HttpStatus.OK).body(toApi(listingDetails.listing(), listingDetails.listingStatus().code(),listingDetails.listingType().code(),photos.stream().map(this::toApi).toList()));
+        return toApi(listingDetails.listing(), listingDetails.listingStatus().code(),listingDetails.listingType().code(),photos.stream().map(this::toApi).toList());
     }
 
     private void requireField(Object value, String field) {

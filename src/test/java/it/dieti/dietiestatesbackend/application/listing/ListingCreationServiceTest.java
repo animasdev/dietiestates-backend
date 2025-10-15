@@ -28,7 +28,6 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -112,7 +111,8 @@ class ListingCreationServiceTest {
                 "Napoli",
                 "80100",
                 40.8518,
-                14.2681
+                14.2681,
+                false
         );
 
         var result = listingCreationService.createListingForUser(userId, command);
@@ -148,7 +148,8 @@ class ListingCreationServiceTest {
                 "City",
                 null,
                 41.0,
-                12.5
+                12.5,
+                false
         );
 
         assertThrows(AgentProfileRequiredException.class, () -> listingCreationService.createListingForUser(userId, command));
@@ -171,7 +172,8 @@ class ListingCreationServiceTest {
                 "City",
                 null,
                 41.0,
-                12.5
+                12.5,
+                false
         );
 
         assertThrows(PriceValidationException.class, () -> listingCreationService.createListingForUser(userId, command));
@@ -194,7 +196,9 @@ class ListingCreationServiceTest {
                 "City",
                 null,
                 41.0,
-                12.5
+                12.5,
+                false
+
         );
 
         assertThrows(PriceValidationException.class, () -> listingCreationService.createListingForUser(userId, command));
@@ -217,7 +221,9 @@ class ListingCreationServiceTest {
                 "City",
                 null,
                 95.0,
-                12.5
+                12.5,
+                false
+
         );
 
         assertThrows(CoordinatesValidationException.class, () -> listingCreationService.createListingForUser(userId, command));
