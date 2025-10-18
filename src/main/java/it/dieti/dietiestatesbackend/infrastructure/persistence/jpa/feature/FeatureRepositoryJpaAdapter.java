@@ -7,6 +7,7 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Repository
 public class FeatureRepositoryJpaAdapter implements FeatureRepository {
@@ -21,6 +22,11 @@ public class FeatureRepositoryJpaAdapter implements FeatureRepository {
     @Override
     public Optional<Feature> findByCode(String code) {
         return jpaRepository.findByCode(code).map(this::toDomain);
+    }
+
+    @Override
+    public Optional<Feature> findById(UUID id) {
+        return jpaRepository.findById(id).map(this::toDomain);
     }
 
     private Feature toDomain(FeatureEntity e) {

@@ -11,8 +11,10 @@ import it.dieti.dietiestatesbackend.application.exception.InternalServerErrorExc
 import it.dieti.dietiestatesbackend.application.exception.UnauthorizedException;
 import it.dieti.dietiestatesbackend.application.exception.listing.ListingStatusUnavailableException;
 import it.dieti.dietiestatesbackend.application.exception.listing.ListingTypeNotSupportedException;
+import it.dieti.dietiestatesbackend.application.feature.FeatureService;
 import it.dieti.dietiestatesbackend.application.listing.ListingCreationService;
 import it.dieti.dietiestatesbackend.application.media.listing.ListingMediaService;
+import it.dieti.dietiestatesbackend.domain.feature.Feature;
 import org.locationtech.jts.geom.Point;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,11 +36,13 @@ public class ListingsApiDelegateImpl implements ListingsApiDelegate {
 
     private final ListingCreationService listingCreationService;
     private final ListingMediaService listingMediaService;
+    private final FeatureService featureService;
     private static final Logger log = LoggerFactory.getLogger(ListingsApiDelegateImpl.class);
 
-    public ListingsApiDelegateImpl(ListingCreationService listingCreationService, ListingMediaService listingMediaService) {
+    public ListingsApiDelegateImpl(ListingCreationService listingCreationService, ListingMediaService listingMediaService, FeatureService featureService) {
         this.listingCreationService = listingCreationService;
         this.listingMediaService = listingMediaService;
+        this.featureService = featureService;
     }
 
     @Override
@@ -81,6 +85,7 @@ public class ListingsApiDelegateImpl implements ListingsApiDelegate {
 
         try {
             var listing = listingCreationService.createListingForUser(userId, command);
+            featureService.saveListingFeatues(listing.id(),listingCreate.getFeatures());
             return ResponseEntity.status(HttpStatus.CREATED).body(getFullListing(listing.id()));
         } catch (ListingTypeNotSupportedException ex) {
             var acceptedTypes = Arrays.stream(ListingCreate.ListingTypeEnum.values())
@@ -110,7 +115,14 @@ public class ListingsApiDelegateImpl implements ListingsApiDelegate {
     private Listing getFullListing(UUID id) {
         var listingDetails = listingCreationService.getListingDetails(id);
         var photos = listingMediaService.getListingPhotos(id);
-        return toApi(listingDetails.listing(), listingDetails.listingStatus().code(),listingDetails.listingType().code(),photos.stream().map(this::toApi).toList());
+        var features = featureService.getListingFeatures(id).stream().map(Feature::code).toList();
+        return toApi(
+                listingDetails.listing(),
+                listingDetails.listingStatus().code(),
+                listingDetails.listingType().code(),
+                photos.stream().map(this::toApi).toList(),
+                features
+        );
     }
 
     private void requireField(Object value, String field) {
@@ -128,7 +140,7 @@ public class ListingsApiDelegateImpl implements ListingsApiDelegate {
                 .position(photoView.position());
     }
 
-    private Listing toApi(it.dieti.dietiestatesbackend.domain.listing.Listing listing,String listingStatus, String typeCode,List<ListingPhoto> photos) {
+    private Listing toApi(it.dieti.dietiestatesbackend.domain.listing.Listing listing,String listingStatus, String typeCode,List<ListingPhoto> photos, List<String> features) {
         Listing body = new Listing();
         body.setId(listing.id());
         body.setAgencyId(listing.agencyId());
@@ -145,7 +157,7 @@ public class ListingsApiDelegateImpl implements ListingsApiDelegate {
         body.setSizeSqm(listing.sizeSqm() != null ? listing.sizeSqm().floatValue() : null);
         body.setFloor(listing.floor());
         body.setEnergyClass(listing.energyClass());
-        body.setFeatures(List.of());
+        body.setFeatures(features);
         body.setGeo(toGeo(listing.geo()));
         body.setPhotos(photos);
         body.setCreatedAt(listing.createdAt());
