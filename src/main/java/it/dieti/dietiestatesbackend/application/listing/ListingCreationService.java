@@ -2,6 +2,7 @@ package it.dieti.dietiestatesbackend.application.listing;
 
 import it.dieti.dietiestatesbackend.application.exception.ApplicationHttpException;
 import it.dieti.dietiestatesbackend.application.exception.BadRequestException;
+import it.dieti.dietiestatesbackend.application.exception.ForbiddenException;
 import it.dieti.dietiestatesbackend.application.exception.InternalServerErrorException;
 import it.dieti.dietiestatesbackend.application.exception.NotFoundException;
 import it.dieti.dietiestatesbackend.application.exception.listing.AgentProfileRequiredException;
@@ -10,6 +11,7 @@ import it.dieti.dietiestatesbackend.application.exception.listing.ListingStatusU
 import it.dieti.dietiestatesbackend.application.exception.listing.ListingTypeNotSupportedException;
 import it.dieti.dietiestatesbackend.application.exception.listing.PriceValidationException;
 import it.dieti.dietiestatesbackend.application.feature.FeatureService;
+import it.dieti.dietiestatesbackend.domain.agent.Agent;
 import it.dieti.dietiestatesbackend.domain.agent.AgentRepository;
 import it.dieti.dietiestatesbackend.domain.listing.Listing;
 import it.dieti.dietiestatesbackend.domain.listing.ListingRepository;
@@ -20,6 +22,7 @@ import it.dieti.dietiestatesbackend.domain.listing.status.ListingStatus;
 import it.dieti.dietiestatesbackend.domain.listing.status.ListingStatusesEnum;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
+import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.PrecisionModel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -74,6 +77,22 @@ public class ListingCreationService {
             double latitude,
             double longitude,
             boolean isPublished,
+            List<String> featureCodes
+    ) {}
+
+    public record UpdateListingCommand(
+            String title,
+            String description,
+            Long priceCents,
+            BigDecimal sizeSqm,
+            Integer rooms,
+            Integer floor,
+            String energyClass,
+            String addressLine,
+            String city,
+            String postalCode,
+            Double latitude,
+            Double longitude,
             List<String> featureCodes
     ) {}
 
@@ -160,8 +179,115 @@ public class ListingCreationService {
         );
         log.info("Listing created {}", listing);
         var savedListing = listingRepository.save(listing);
-        featureService.saveListingFeatures(savedListing.id(), command.featureCodes());
+        featureService.syncListingFeatures(savedListing.id(), command.featureCodes());
         return savedListing;
+    }
+
+    @Transactional
+    public Listing updateListingForUser(UUID userId, UUID listingId, UpdateListingCommand command) {
+        Objects.requireNonNull(userId, "userId is required");
+        Objects.requireNonNull(listingId, "listingId is required");
+        Objects.requireNonNull(command, "command is required");
+
+        var agent = requireAgent(userId);
+        var listing = requireListing(listingId);
+        ensureOwnership(agent, listing, listingId);
+
+        var updatedListing = applyListingUpdates(listing, command);
+        var saved = listingRepository.save(updatedListing);
+        featureService.syncListingFeatures(saved.id(), command.featureCodes());
+        return saved;
+    }
+
+    private Agent requireAgent(UUID userId) {
+        return agentRepository.findByUserId(userId)
+                .orElseThrow(AgentProfileRequiredException::new);
+    }
+
+    private Listing requireListing(UUID listingId) {
+        return listingRepository.findById(listingId)
+                .orElseThrow(() -> {
+                    log.warn("Annuncio {} non trovato durante aggiornamento", listingId);
+                    return NotFoundException.resourceNotFound("Annuncio", listingId);
+                });
+    }
+
+    private void ensureOwnership(Agent agent, Listing listing, UUID listingId) {
+        if (!agent.id().equals(listing.ownerAgentId())) {
+            log.warn("Agent {} attempted to update listing {} not owned", agent.id(), listingId);
+            throw ForbiddenException.of("Permesso negato: puoi modificare solo gli annunci che hai creato.");
+        }
+    }
+
+    private Listing applyListingUpdates(Listing listing, UpdateListingCommand command) {
+        var title = resolveRequiredTextField(command.title(), listing.title(), "title", "Il campo 'title' non può essere vuoto.");
+        var description = resolveRequiredTextField(command.description(), listing.description(), "description", "Il campo 'description' non può essere vuoto.");
+        var addressLine = resolveRequiredTextField(command.addressLine(), listing.addressLine(), "address", "Il campo 'address' non può essere vuoto.");
+        var city = resolveRequiredTextField(command.city(), listing.city(), "city", "Il campo 'city' non può essere vuoto.");
+        var priceCents = resolveUpdatedPrice(listing.priceCents(), command.priceCents());
+        var sizeSqm = command.sizeSqm() != null ? command.sizeSqm() : listing.sizeSqm();
+        var rooms = command.rooms() != null ? command.rooms() : listing.rooms();
+        var floor = command.floor() != null ? command.floor() : listing.floor();
+        var energyClass = command.energyClass() != null ? normalizeOptional(command.energyClass()) : listing.energyClass();
+        var postalCode = command.postalCode() != null ? normalizeOptional(command.postalCode()) : listing.postalCode();
+        var geo = resolveUpdatedGeo(listing.geo(), command.latitude(), command.longitude());
+
+        return new Listing(
+                listing.id(),
+                listing.agencyId(),
+                listing.ownerAgentId(),
+                listing.listingTypeId(),
+                listing.statusId(),
+                title,
+                description,
+                priceCents,
+                listing.currency(),
+                sizeSqm,
+                rooms,
+                floor,
+                energyClass,
+                addressLine,
+                city,
+                postalCode,
+                geo,
+                listing.pendingDeleteUntil(),
+                listing.deletedAt(),
+                listing.publishedAt(),
+                listing.createdAt(),
+                listing.updatedAt()
+        );
+    }
+
+    private String resolveRequiredTextField(String requestedValue, String currentValue, String fieldName, String emptyMessage) {
+        if (requestedValue == null) {
+            return currentValue;
+        }
+        var normalized = normalize(requestedValue);
+        if (normalized.isBlank()) {
+            throw BadRequestException.forField(fieldName, emptyMessage);
+        }
+        return normalized;
+    }
+
+    private long resolveUpdatedPrice(long currentPrice, Long requestedPrice) {
+        if (requestedPrice == null) {
+            return currentPrice;
+        }
+        if (requestedPrice < 0) {
+            throw PriceValidationException.mustBePositive();
+        }
+        return requestedPrice;
+    }
+
+    private Point resolveUpdatedGeo(Point currentGeo, Double latitude, Double longitude) {
+        if (latitude == null && longitude == null) {
+            return currentGeo;
+        }
+        if (latitude == null || longitude == null) {
+            throw BadRequestException.forField("geo", "Per aggiornare la posizione devi fornire sia lat che lng.");
+        }
+        validateCoordinates(latitude, longitude);
+        return GEOMETRY_FACTORY.createPoint(new Coordinate(longitude, latitude));
     }
 
     public ListingDetails getListingDetails(UUID listingId) {

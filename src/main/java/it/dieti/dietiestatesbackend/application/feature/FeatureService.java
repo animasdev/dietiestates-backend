@@ -9,11 +9,12 @@ import it.dieti.dietiestatesbackend.domain.feature.listing.ListingFeatureReposit
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-import java.util.UUID;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional(readOnly = true)
@@ -31,12 +32,57 @@ public class FeatureService {
     }
 
     @Transactional
-    public void saveListingFeatures(UUID listingId, List<String> codes) {
+    public void syncListingFeatures(UUID listingId, List<String> codes) {
         Objects.requireNonNull(listingId, "listingId is required");
-        if (codes == null || codes.isEmpty()) {
+        if (codes == null) {
             return;
         }
 
+        var normalized = normalizeAndValidateCodes(codes);
+        var desiredFeatures = new LinkedHashMap<UUID, Feature>();
+        for (String code : normalized.keySet()) {
+            var feature = findByCode(code);
+            desiredFeatures.put(feature.id(), feature);
+        }
+
+        var existingAssociations = listingFeatureRepository.findByListingId(listingId);
+        var existingByFeatureId = existingAssociations.stream()
+                .collect(Collectors.toMap(ListingFeature::featureId, listingFeature -> listingFeature));
+
+        for (var entry : desiredFeatures.entrySet()) {
+            if (!existingByFeatureId.containsKey(entry.getKey())) {
+                var entity = new ListingFeature(
+                        null,
+                        listingId,
+                        entry.getKey(),
+                        0,
+                        null,
+                        null
+                );
+                listingFeatureRepository.save(entity);
+            }
+        }
+
+        for (var existing : existingAssociations) {
+            if (!desiredFeatures.containsKey(existing.featureId())) {
+                listingFeatureRepository.deleteById(existing.id());
+            }
+        }
+    }
+
+    public Feature findByCode(String code) {
+        return featureRepository.findByCode(code).orElseThrow(
+                () -> NotFoundException.resourceNotFound("feature", code)
+        );
+    }
+
+    public List<Feature> getListingFeatures(UUID listingId) {
+        return listingFeatureRepository.findByListingId(listingId).stream().map(f -> featureRepository.findById(f.featureId()).orElseThrow(
+                () -> NotFoundException.resourceNotFound("feature", f.featureId())
+        )).toList();
+    }
+
+    private Map<String, Integer> normalizeAndValidateCodes(List<String> codes) {
         var occurrences = new LinkedHashMap<String, Integer>();
         for (String rawCode : codes) {
             if (rawCode == null || rawCode.trim().isEmpty()) {
@@ -54,31 +100,6 @@ public class FeatureService {
             var detail = "I codici delle feature devono essere univoci. Duplicati: " + String.join(", ", duplicates);
             throw BadRequestException.forField("features", detail);
         }
-
-        for (String code : occurrences.keySet()) {
-            var featureId = findByCode(code).id();
-            ListingFeature entity = new ListingFeature(
-                    null,
-                    listingId,
-                    featureId,
-                    0,
-                    null,
-                    null
-            );
-            listingFeatureRepository.save(entity);
-        }
+        return occurrences;
     }
-
-    public Feature findByCode(String code) {
-        return featureRepository.findByCode(code).orElseThrow(
-                () -> NotFoundException.resourceNotFound("feature",code)
-        );
-    }
-
-    public List<Feature> getListingFeatures(UUID listingId) {
-        return listingFeatureRepository.findByListingId(listingId).stream().map(f-> featureRepository.findById(f.featureId()).orElseThrow(
-                ()-> NotFoundException.resourceNotFound("feature",f.featureId())
-        )).toList();
-    }
-
 }

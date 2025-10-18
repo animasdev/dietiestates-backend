@@ -126,9 +126,27 @@ components:
             lat: { type: number, format: float }
             lng: { type: number, format: float }
     ListingUpdate:
-      allOf:
-        - $ref: '#/components/schemas/ListingCreate'
+      type: object
       description: Fields are optional; send only those to update
+      properties:
+        title: { type: string }
+        description: { type: string }
+        priceCents: { type: integer, nullable: true }
+        sizeSqm: { type: number, format: float }
+        rooms: { type: integer }
+        floor: { type: integer }
+        energyClass: { type: string }
+        address: { type: string }
+        city: { type: string }
+        postalCode: { type: string }
+        features:
+          type: array
+          items: { type: string }
+        geo:
+          type: object
+          properties:
+            lat: { type: number, format: float }
+            lng: { type: number, format: float }
     ListingPhoto:
       type: object
       properties:
@@ -511,7 +529,7 @@ paths:
     patch:
       tags: [Listings]
       summary: Update listing fields
-      description: Server enforces role-based field restrictions (RD1) for admin edits.
+      description: Server enforces role-based field restrictions for admin edits.
       security:
         - bearerAuth: []
       parameters:

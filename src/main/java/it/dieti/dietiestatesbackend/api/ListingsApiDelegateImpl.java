@@ -6,6 +6,7 @@ import it.dieti.dietiestatesbackend.api.model.Listing;
 import it.dieti.dietiestatesbackend.api.model.ListingCreate;
 import it.dieti.dietiestatesbackend.api.model.ListingGeo;
 import it.dieti.dietiestatesbackend.api.model.ListingPhoto;
+import it.dieti.dietiestatesbackend.api.model.ListingUpdate;
 import it.dieti.dietiestatesbackend.application.exception.BadRequestException;
 import it.dieti.dietiestatesbackend.application.exception.InternalServerErrorException;
 import it.dieti.dietiestatesbackend.application.exception.UnauthorizedException;
@@ -111,6 +112,50 @@ public class ListingsApiDelegateImpl implements ListingsApiDelegate {
     ){
         var body = getFullListing(id);
         return ResponseEntity.status(HttpStatus.OK).body(body);
+    }
+
+    @Override
+    public ResponseEntity<Listing> listingsIdPatch(
+            @Parameter(name = "id", required = true, in = ParameterIn.PATH) UUID id,
+            ListingUpdate listingUpdate
+    ) {
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        if (!(auth instanceof JwtAuthenticationToken jwtAuth)) {
+            log.warn("Accesso non autorizzato a listingsIdPatch: token mancante");
+            throw UnauthorizedException.bearerTokenMissing();
+        }
+
+        var userId = UUID.fromString(jwtAuth.getToken().getSubject());
+
+        Long priceCents = listingUpdate.getPriceCents() != null
+                ? listingUpdate.getPriceCents().longValue()
+                : null;
+        BigDecimal sizeSqm = listingUpdate.getSizeSqm() != null
+                ? BigDecimal.valueOf(listingUpdate.getSizeSqm())
+                : null;
+        var geo = listingUpdate.getGeo();
+        Double latitude = geo != null ? Double.valueOf(geo.getLat()) : null;
+        Double longitude = geo != null ? Double.valueOf(geo.getLng()) : null;
+        var featureCodes = listingUpdate.getFeatures() != null ? List.copyOf(listingUpdate.getFeatures()) : null;
+
+        var command = new ListingCreationService.UpdateListingCommand(
+                listingUpdate.getTitle(),
+                listingUpdate.getDescription(),
+                priceCents,
+                sizeSqm,
+                listingUpdate.getRooms(),
+                listingUpdate.getFloor(),
+                listingUpdate.getEnergyClass(),
+                listingUpdate.getAddress(),
+                listingUpdate.getCity(),
+                listingUpdate.getPostalCode(),
+                latitude,
+                longitude,
+                featureCodes
+        );
+
+        var updatedListing = listingCreationService.updateListingForUser(userId, id, command);
+        return ResponseEntity.status(HttpStatus.OK).body(getFullListing(updatedListing.id()));
     }
 
     private Listing getFullListing(UUID id) {

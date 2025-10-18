@@ -8,4 +8,5 @@ public interface ListingFeatureRepository {
     ListingFeature save(ListingFeature listingFeature);
     Optional<ListingFeature> findById(UUID id);
     List<ListingFeature> findByListingId(UUID listingId);
+    void deleteById(UUID id);
 }

@@ -66,4 +66,9 @@ public class ListingFeatureRepositoryJpaAdapter implements ListingFeatureReposit
     public List<ListingFeature> findByListingId(UUID listingId) {
         return repository.findByListing_Id(listingId).stream().map(this::toDomain).toList();
     }
+
+    @Override
+    public void deleteById(UUID id) {
+        repository.deleteById(id);
+    }
 }
