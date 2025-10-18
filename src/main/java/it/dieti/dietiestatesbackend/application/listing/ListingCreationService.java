@@ -9,6 +9,7 @@ import it.dieti.dietiestatesbackend.application.exception.listing.CoordinatesVal
 import it.dieti.dietiestatesbackend.application.exception.listing.ListingStatusUnavailableException;
 import it.dieti.dietiestatesbackend.application.exception.listing.ListingTypeNotSupportedException;
 import it.dieti.dietiestatesbackend.application.exception.listing.PriceValidationException;
+import it.dieti.dietiestatesbackend.application.feature.FeatureService;
 import it.dieti.dietiestatesbackend.domain.agent.AgentRepository;
 import it.dieti.dietiestatesbackend.domain.listing.Listing;
 import it.dieti.dietiestatesbackend.domain.listing.ListingRepository;
@@ -43,16 +44,19 @@ public class ListingCreationService {
     private final ListingTypeRepository listingTypeRepository;
     private final ListingStatusRepository listingStatusRepository;
     private final AgentRepository agentRepository;
+    private final FeatureService featureService;
     private static final Logger log = LoggerFactory.getLogger(ListingCreationService.class);
 
     public ListingCreationService(ListingRepository listingRepository,
                                   ListingTypeRepository listingTypeRepository,
                                   ListingStatusRepository listingStatusRepository,
-                                  AgentRepository agentRepository) {
+                                  AgentRepository agentRepository,
+                                  FeatureService featureService) {
         this.listingRepository = listingRepository;
         this.listingTypeRepository = listingTypeRepository;
         this.listingStatusRepository = listingStatusRepository;
         this.agentRepository = agentRepository;
+        this.featureService = featureService;
     }
 
     public record CreateListingCommand(
@@ -69,7 +73,8 @@ public class ListingCreationService {
             String postalCode,
             double latitude,
             double longitude,
-            boolean isPublished
+            boolean isPublished,
+            List<String> featureCodes
     ) {}
 
     public record ListingDetails(
@@ -154,7 +159,9 @@ public class ListingCreationService {
                 null
         );
         log.info("Listing created {}", listing);
-        return listingRepository.save(listing);
+        var savedListing = listingRepository.save(listing);
+        featureService.saveListingFeatures(savedListing.id(), command.featureCodes());
+        return savedListing;
     }
 
     public ListingDetails getListingDetails(UUID listingId) {

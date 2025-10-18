@@ -66,6 +66,7 @@ public class ListingsApiDelegateImpl implements ListingsApiDelegate {
 
         var userId = UUID.fromString(jwtAuth.getToken().getSubject());
 
+        var featureCodes = listingCreate.getFeatures() == null ? List.<String>of() : List.copyOf(listingCreate.getFeatures());
         var command = new ListingCreationService.CreateListingCommand(
                 listingCreate.getTitle(),
                 listingCreate.getDescription(),
@@ -80,12 +81,12 @@ public class ListingsApiDelegateImpl implements ListingsApiDelegate {
                 listingCreate.getPostalCode(),
                 geo.getLat(),
                 geo.getLng(),
-                listingCreate.getIsPublished()
+                listingCreate.getIsPublished(),
+                featureCodes
         );
 
         try {
             var listing = listingCreationService.createListingForUser(userId, command);
-            featureService.saveListingFeatues(listing.id(),listingCreate.getFeatures());
             return ResponseEntity.status(HttpStatus.CREATED).body(getFullListing(listing.id()));
         } catch (ListingTypeNotSupportedException ex) {
             var acceptedTypes = Arrays.stream(ListingCreate.ListingTypeEnum.values())

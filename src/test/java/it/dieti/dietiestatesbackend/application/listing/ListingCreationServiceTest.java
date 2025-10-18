@@ -11,6 +11,7 @@ import it.dieti.dietiestatesbackend.domain.listing.ListingType;
 import it.dieti.dietiestatesbackend.domain.listing.ListingTypeRepository;
 import it.dieti.dietiestatesbackend.domain.listing.status.ListingStatus;
 import it.dieti.dietiestatesbackend.domain.listing.status.ListingStatusRepository;
+import it.dieti.dietiestatesbackend.application.feature.FeatureService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -22,6 +23,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -41,6 +43,8 @@ class ListingCreationServiceTest {
     private ListingStatusRepository listingStatusRepository;
     @Mock
     private AgentRepository agentRepository;
+    @Mock
+    private FeatureService featureService;
 
     @InjectMocks
     private ListingCreationService listingCreationService;
@@ -112,7 +116,8 @@ class ListingCreationServiceTest {
                 "80100",
                 40.8518,
                 14.2681,
-                false
+                false,
+                List.of()
         );
 
         var result = listingCreationService.createListingForUser(userId, command);
@@ -149,7 +154,8 @@ class ListingCreationServiceTest {
                 null,
                 41.0,
                 12.5,
-                false
+                false,
+                List.of()
         );
 
         assertThrows(AgentProfileRequiredException.class, () -> listingCreationService.createListingForUser(userId, command));
@@ -173,7 +179,8 @@ class ListingCreationServiceTest {
                 null,
                 41.0,
                 12.5,
-                false
+                false,
+                List.of()
         );
 
         assertThrows(PriceValidationException.class, () -> listingCreationService.createListingForUser(userId, command));
@@ -197,7 +204,8 @@ class ListingCreationServiceTest {
                 null,
                 41.0,
                 12.5,
-                false
+                false,
+                List.of()
 
         );
 
@@ -222,7 +230,8 @@ class ListingCreationServiceTest {
                 null,
                 95.0,
                 12.5,
-                false
+                false,
+                List.of()
 
         );
 
