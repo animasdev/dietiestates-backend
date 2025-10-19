@@ -4,8 +4,6 @@ import it.dieti.dietiestatesbackend.domain.listing.Listing;
 import it.dieti.dietiestatesbackend.domain.listing.ListingRepository;
 import it.dieti.dietiestatesbackend.infrastructure.persistence.jpa.agent.AgentEntity;
 import it.dieti.dietiestatesbackend.infrastructure.persistence.jpa.agency.AgencyEntity;
-import it.dieti.dietiestatesbackend.infrastructure.persistence.jpa.listing.ListingStatusEntity;
-import it.dieti.dietiestatesbackend.infrastructure.persistence.jpa.listing.ListingTypeEntity;
 import org.springframework.stereotype.Repository;
 
 import java.time.OffsetDateTime;
@@ -65,38 +63,11 @@ public class ListingRepositoryJpaAdapter implements ListingRepository {
         entity.setUpdatedAt(OffsetDateTime.now());
 
         var saved = jpaRepository.save(entity);
-        return toDomain(saved);
+        return ListingEntityMapper.toDomain(saved);
     }
 
     @Override
     public Optional<Listing> findById(UUID id) {
-        return jpaRepository.findById(id).map(this::toDomain);
-    }
-
-    private Listing toDomain(ListingEntity entity) {
-        return new Listing(
-                entity.getId(),
-                entity.getAgency() != null ? entity.getAgency().getId() : null,
-                entity.getOwnerAgent() != null ? entity.getOwnerAgent().getId() : null,
-                entity.getListingType() != null ? entity.getListingType().getId() : null,
-                entity.getStatus() != null ? entity.getStatus().getId() : null,
-                entity.getTitle(),
-                entity.getDescription(),
-                entity.getPriceCents() != null ? entity.getPriceCents() : 0L,
-                entity.getCurrency(),
-                entity.getSizeSqm(),
-                entity.getRooms(),
-                entity.getFloor(),
-                entity.getEnergyClass(),
-                entity.getAddressLine(),
-                entity.getCity(),
-                entity.getPostalCode(),
-                entity.getGeo(),
-                entity.getPendingDeleteUntil(),
-                entity.getDeletedAt(),
-                entity.getPublishedAt(),
-                entity.getCreatedAt(),
-                entity.getUpdatedAt()
-        );
+        return jpaRepository.findById(id).map(ListingEntityMapper::toDomain);
     }
 }

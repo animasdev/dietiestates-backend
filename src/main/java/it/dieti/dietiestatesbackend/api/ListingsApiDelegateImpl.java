@@ -6,6 +6,7 @@ import it.dieti.dietiestatesbackend.api.model.Listing;
 import it.dieti.dietiestatesbackend.api.model.ListingCreate;
 import it.dieti.dietiestatesbackend.api.model.ListingGeo;
 import it.dieti.dietiestatesbackend.api.model.ListingPhoto;
+import it.dieti.dietiestatesbackend.api.model.Page;
 import it.dieti.dietiestatesbackend.api.model.ListingUpdate;
 import it.dieti.dietiestatesbackend.application.exception.BadRequestException;
 import it.dieti.dietiestatesbackend.application.exception.InternalServerErrorException;
@@ -14,6 +15,7 @@ import it.dieti.dietiestatesbackend.application.exception.listing.ListingStatusU
 import it.dieti.dietiestatesbackend.application.exception.listing.ListingTypeNotSupportedException;
 import it.dieti.dietiestatesbackend.application.feature.FeatureService;
 import it.dieti.dietiestatesbackend.application.listing.ListingCreationService;
+import it.dieti.dietiestatesbackend.application.listing.ListingSearchService;
 import it.dieti.dietiestatesbackend.application.media.listing.ListingMediaService;
 import it.dieti.dietiestatesbackend.domain.feature.Feature;
 import org.locationtech.jts.geom.Point;
@@ -29,6 +31,7 @@ import java.math.BigDecimal;
 import java.net.URI;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -38,12 +41,84 @@ public class ListingsApiDelegateImpl implements ListingsApiDelegate {
     private final ListingCreationService listingCreationService;
     private final ListingMediaService listingMediaService;
     private final FeatureService featureService;
+    private final ListingSearchService listingSearchService;
     private static final Logger log = LoggerFactory.getLogger(ListingsApiDelegateImpl.class);
 
-    public ListingsApiDelegateImpl(ListingCreationService listingCreationService, ListingMediaService listingMediaService, FeatureService featureService) {
+    public ListingsApiDelegateImpl(ListingCreationService listingCreationService,
+                                   ListingMediaService listingMediaService,
+                                   FeatureService featureService,
+                                   ListingSearchService listingSearchService) {
         this.listingCreationService = listingCreationService;
         this.listingMediaService = listingMediaService;
         this.featureService = featureService;
+        this.listingSearchService = listingSearchService;
+    }
+
+
+    @Override
+    public ResponseEntity<Page> listingsGet(
+            String type,
+            String city,
+            Integer minPrice,
+            Integer maxPrice,
+            Integer rooms,
+            String energyClass,
+            List<String> features,
+            String status,
+            Float lat,
+            Float lng,
+            Integer radiusMeters,
+            Integer page,
+            Integer size,
+            String sort
+    ) {
+        boolean enforcePublishedOnly = !(SecurityContextHolder.getContext().getAuthentication() instanceof JwtAuthenticationToken);
+        String normalizedStatus = status != null ? status.trim().toUpperCase(Locale.ROOT) : null;
+        Double latitude = lat != null ? lat.doubleValue() : null;
+        Double longitude = lng != null ? lng.doubleValue() : null;
+
+        var query = new ListingSearchService.SearchQuery(
+                type,
+                city,
+                minPrice,
+                maxPrice,
+                rooms,
+                energyClass,
+                features,
+                normalizedStatus,
+                latitude,
+                longitude,
+                radiusMeters,
+                page,
+                size,
+                sort,
+                enforcePublishedOnly
+        );
+
+        try {
+            var result = listingSearchService.search(query);
+            var items = result.items().stream()
+                    .map(item -> toApi(
+                            item.listing(),
+                            item.listingStatus() != null ? item.listingStatus().code() : null,
+                            item.listingType() != null ? item.listingType().code() : null,
+                            item.photos().stream().map(this::toApi).toList(),
+                            item.features().stream().map(Feature::code).toList()
+                    ))
+                    .toList();
+
+            Page body = new Page();
+            body.setPage(result.page());
+            body.setSize(result.size());
+            body.setTotal(Math.toIntExact(result.total()));
+            body.setItems(items);
+            return ResponseEntity.ok(body);
+        } catch (BadRequestException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            log.error("Errore inatteso durante la ricerca annunci", ex);
+            throw new InternalServerErrorException("Si è verificato un errore interno. Riprova più tardi.");
+        }
     }
 
     @Override
