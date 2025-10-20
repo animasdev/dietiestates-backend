@@ -69,6 +69,8 @@ public class ListingsApiDelegateImpl implements ListingsApiDelegate {
             Float lng,
             Integer radiusMeters,
             Boolean hasPhotos,
+            UUID agencyId,
+            UUID ownerAgentId,
             Integer page,
             Integer size,
             String sort
@@ -91,6 +93,8 @@ public class ListingsApiDelegateImpl implements ListingsApiDelegate {
                 longitude,
                 radiusMeters,
                 hasPhotos,
+                agencyId,
+                ownerAgentId,
                 page,
                 size,
                 sort,

@@ -486,6 +486,14 @@ paths:
             Filtra gli annunci in base alla presenza di foto.
             - `true`: restituisce solo annunci con almeno una foto.
             - `false`: restituisce solo annunci senza foto.
+        - name: agencyId
+          in: query
+          schema: { type: string, format: uuid }
+          description: Filtra gli annunci per agenzia proprietaria.
+        - name: ownerAgentId
+          in: query
+          schema: { type: string, format: uuid }
+          description: Filtra gli annunci per agente proprietario.
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/Size'
         - $ref: '#/components/parameters/Sort'

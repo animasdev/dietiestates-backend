@@ -35,6 +35,8 @@ public class ListingSearchRepositoryJpaAdapter implements ListingSearchRepositor
         buildEnergyClassCondition(filters, params, whereClauses);
         buildRadiusCondition(filters, params, whereClauses);
         buildHasPhotosCondition(filters, whereClauses);
+        buildAgencyCondition(filters, params, whereClauses);
+        buildOwnerAgentCondition(filters, params, whereClauses);
         String featureCondition = buildFeatureCondition(filters, params);
 
         var whereClause = whereClauses.isEmpty()
@@ -169,6 +171,28 @@ public class ListingSearchRepositoryJpaAdapter implements ListingSearchRepositor
             whereClauses.add("EXISTS (SELECT 1 FROM listing_media lm WHERE lm.listing_id = l.id)");
         } else {
             whereClauses.add("NOT EXISTS (SELECT 1 FROM listing_media lm WHERE lm.listing_id = l.id)");
+        }
+    }
+
+    private static void buildAgencyCondition(
+            SearchFilters filters,
+            Map<String, Object> params,
+            List<String> whereClauses
+    ) {
+        if (filters.agencyId() != null) {
+            whereClauses.add("l.agency_id = :agencyId");
+            params.put("agencyId", filters.agencyId());
+        }
+    }
+
+    private static void buildOwnerAgentCondition(
+            SearchFilters filters,
+            Map<String, Object> params,
+            List<String> whereClauses
+    ) {
+        if (filters.ownerAgentId() != null) {
+            whereClauses.add("l.owner_agent_id = :ownerAgentId");
+            params.put("ownerAgentId", filters.ownerAgentId());
         }
     }
 

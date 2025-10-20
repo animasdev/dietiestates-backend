@@ -22,6 +22,8 @@ public interface ListingSearchRepository {
             Double longitude,
             Integer radiusMeters,
             Boolean hasPhotos,
+            UUID agencyId,
+            UUID ownerAgentId,
             String sortColumn,
             boolean sortAscending,
             int page,
