@@ -33,6 +33,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -54,6 +55,9 @@ public class ListingCreationService {
     private final RoleRepository roleRepository;
     private final FeatureService featureService;
     private static final Logger log = LoggerFactory.getLogger(ListingCreationService.class);
+    private static final String INTERNAL_ERROR_MESSAGE = "Si è verificato un errore interno. Riprova più tardi.";
+    private static final String USER_ID_REQUIRED_MESSAGE = "userId is required";
+    private static final String LISTING_ID_REQUIRED_MESSAGE = "listingId is required";
 
     public ListingCreationService(ListingRepository listingRepository,
                                   ListingTypeRepository listingTypeRepository,
@@ -113,7 +117,7 @@ public class ListingCreationService {
 
     @Transactional
     public Listing createListingForUser(UUID userId, CreateListingCommand command) {
-        Objects.requireNonNull(userId, "userId is required");
+        Objects.requireNonNull(userId, USER_ID_REQUIRED_MESSAGE);
         Objects.requireNonNull(command, "command is required");
 
         var userRole = resolveUserRole(userId);
@@ -200,8 +204,8 @@ public class ListingCreationService {
 
     @Transactional
     public Listing updateListingForUser(UUID userId, UUID listingId, UpdateListingCommand command) {
-        Objects.requireNonNull(userId, "userId is required");
-        Objects.requireNonNull(listingId, "listingId is required");
+        Objects.requireNonNull(userId, USER_ID_REQUIRED_MESSAGE);
+        Objects.requireNonNull(listingId, LISTING_ID_REQUIRED_MESSAGE);
         Objects.requireNonNull(command, "command is required");
 
         var userRole = resolveUserRole(userId);
@@ -224,6 +228,71 @@ public class ListingCreationService {
         var saved = listingRepository.save(updatedListing);
         featureService.syncListingFeatures(saved.id(), command.featureCodes());
         return saved;
+    }
+
+    @Transactional
+    public Listing requestDeletion(UUID userId, UUID listingId) {
+        Objects.requireNonNull(userId, USER_ID_REQUIRED_MESSAGE);
+        Objects.requireNonNull(listingId, LISTING_ID_REQUIRED_MESSAGE);
+
+        var listing = requireListing(listingId);
+        var userRole = resolveUserRole(userId);
+        boolean isPrivileged = userRole == RolesEnum.ADMIN || userRole == RolesEnum.SUPERADMIN;
+
+        if (!isPrivileged) {
+            var agent = requireAgent(userId);
+            if (!agent.id().equals(listing.ownerAgentId())) {
+                log.warn("Agent {} attempted to delete listing {} not owned", agent.id(), listingId);
+                throw ForbiddenException.of("Permesso negato: puoi cancellare solo gli annunci che hai creato.");
+            }
+        }
+
+        var listingStatus = listingStatusRepository.findById(listing.statusId())
+                .orElseThrow(() -> {
+                    log.error("Annuncio {} con status {} inesistente durante delete", listingId, listing.statusId());
+                    return new InternalServerErrorException(INTERNAL_ERROR_MESSAGE);
+                });
+
+        if (!ListingStatusesEnum.PUBLISHED.getDescription().equals(listingStatus.code())) {
+            log.warn("Tentativo di cancellare annuncio {} con stato {}", listingId, listingStatus.code());
+            throw BadRequestException.of("Solo gli annunci in stato PUBLISHED possono essere cancellati.");
+        }
+
+        var pendingDeleteStatus = listingStatusRepository.findByCode(ListingStatusesEnum.PENDING_DELETE.getDescription())
+                .orElseThrow(() -> {
+                    log.error("Stato PENDING_DELETE non configurato");
+                    return new InternalServerErrorException(INTERNAL_ERROR_MESSAGE);
+                });
+
+        var now = OffsetDateTime.now();
+        var pendingDeleteUntil = now.plusHours(24);
+
+        var updatedListing = new Listing(
+                listing.id(),
+                listing.agencyId(),
+                listing.ownerAgentId(),
+                listing.listingTypeId(),
+                pendingDeleteStatus.id(),
+                listing.title(),
+                listing.description(),
+                listing.priceCents(),
+                listing.currency(),
+                listing.sizeSqm(),
+                listing.rooms(),
+                listing.floor(),
+                listing.energyClass(),
+                listing.addressLine(),
+                listing.city(),
+                listing.postalCode(),
+                listing.geo(),
+                pendingDeleteUntil,
+                listing.deletedAt(),
+                listing.publishedAt(),
+                listing.createdAt(),
+                now
+        );
+
+        return listingRepository.save(updatedListing);
     }
 
     private Agent requireAgent(UUID userId) {
@@ -339,7 +408,7 @@ public class ListingCreationService {
     }
 
     public ListingDetails getListingDetails(UUID listingId) {
-        Objects.requireNonNull(listingId, "listingId is required");
+        Objects.requireNonNull(listingId, LISTING_ID_REQUIRED_MESSAGE);
 
         var listing = listingRepository.findById(listingId)
                 .orElseThrow(() -> {
@@ -352,7 +421,7 @@ public class ListingCreationService {
             listingType = listingTypeRepository.findById(listing.listingTypeId())
                     .orElseThrow(() -> {
                         log.error("Annuncio '{}' con listingType '{}' inesistente", listingId, listing.listingTypeId());
-                        return new InternalServerErrorException("Si è verificato un errore interno. Riprova più tardi.");
+                    return new InternalServerErrorException(INTERNAL_ERROR_MESSAGE);
                     });
         }
 
@@ -361,7 +430,7 @@ public class ListingCreationService {
             listingStatus = listingStatusRepository.findById(listing.statusId())
                     .orElseThrow(() -> {
                         log.error("Annuncio {} con status {} inesistente", listingId, listing.statusId());
-                        return new InternalServerErrorException("Si è verificato un errore interno. Riprova più tardi.");
+                        return new InternalServerErrorException(INTERNAL_ERROR_MESSAGE);
                     });
         }
 

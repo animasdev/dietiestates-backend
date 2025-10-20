@@ -1,5 +1,6 @@
 package it.dieti.dietiestatesbackend.application.listing;
 
+import it.dieti.dietiestatesbackend.application.exception.BadRequestException;
 import it.dieti.dietiestatesbackend.application.exception.ForbiddenException;
 import it.dieti.dietiestatesbackend.application.exception.listing.AgentProfileRequiredException;
 import it.dieti.dietiestatesbackend.application.exception.listing.CoordinatesValidationException;
@@ -12,6 +13,7 @@ import it.dieti.dietiestatesbackend.domain.listing.ListingType;
 import it.dieti.dietiestatesbackend.domain.listing.ListingTypeRepository;
 import it.dieti.dietiestatesbackend.domain.listing.status.ListingStatus;
 import it.dieti.dietiestatesbackend.domain.listing.status.ListingStatusRepository;
+import it.dieti.dietiestatesbackend.domain.listing.status.ListingStatusesEnum;
 import it.dieti.dietiestatesbackend.application.feature.FeatureService;
 import it.dieti.dietiestatesbackend.domain.user.User;
 import it.dieti.dietiestatesbackend.domain.user.UserRepository;
@@ -29,6 +31,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -36,6 +39,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -231,6 +235,225 @@ class ListingCreationServiceTest {
         );
 
         assertThrows(PriceValidationException.class, () -> listingCreationService.createListingForUser(userId, command));
+    }
+
+    @Test
+    void requestDeletion_whenOwnerAgent_marksListingPendingDelete() {
+        var listingId = UUID.randomUUID();
+        var agentRoleId = UUID.randomUUID();
+        var pendingStatusId = UUID.randomUUID();
+        var now = OffsetDateTime.now();
+
+        var listing = new Listing(
+                listingId,
+                agencyId,
+                agentId,
+                typeId,
+                statusId,
+                "Titolo",
+                "Descrizione",
+                120_000L,
+                "EUR",
+                BigDecimal.valueOf(80),
+                3,
+                1,
+                "B",
+                "Via Roma",
+                "Roma",
+                "00100",
+                null,
+                null,
+                null,
+                now.minusDays(10),
+                now.minusDays(20),
+                now.minusDays(10)
+        );
+
+        when(listingRepository.findById(listingId)).thenReturn(Optional.of(listing));
+        when(userRepository.findById(userId)).thenReturn(Optional.of(new User(
+                userId,
+                "Agent User",
+                "agent@example.com",
+                true,
+                agentRoleId,
+                null,
+                null,
+                now.minusYears(1),
+                now.minusMonths(1)
+        )));
+        when(roleRepository.findById(agentRoleId)).thenReturn(Optional.of(new Role(agentRoleId, RolesEnum.AGENT.name(), "Agent", "Agente")));
+        var agent = new Agent(agentId, userId, agencyId, "REA123", null, now, now);
+        when(agentRepository.findByUserId(userId)).thenReturn(Optional.of(agent));
+        when(listingStatusRepository.findById(statusId))
+                .thenReturn(Optional.of(new ListingStatus(statusId, ListingStatusesEnum.PUBLISHED.getDescription(), "Pubblicato", 2, now)));
+        when(listingStatusRepository.findByCode(ListingStatusesEnum.PENDING_DELETE.getDescription()))
+                .thenReturn(Optional.of(new ListingStatus(pendingStatusId, ListingStatusesEnum.PENDING_DELETE.getDescription(), "Pending delete", 3, now)));
+        when(listingRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        var result = listingCreationService.requestDeletion(userId, listingId);
+
+        assertThat(result.statusId()).isEqualTo(pendingStatusId);
+        assertThat(result.pendingDeleteUntil()).isNotNull();
+        assertThat(result.pendingDeleteUntil()).isCloseTo(now.plusHours(24), within(1, ChronoUnit.MINUTES));
+    }
+
+    @Test
+    void requestDeletion_whenAdmin_succeedsWithoutAgentProfile() {
+        var listingId = UUID.randomUUID();
+        var adminRoleId = UUID.randomUUID();
+        var pendingStatusId = UUID.randomUUID();
+        var now = OffsetDateTime.now();
+
+        var listing = new Listing(
+                listingId,
+                agencyId,
+                agentId,
+                typeId,
+                statusId,
+                "Titolo",
+                "Descrizione",
+                120_000L,
+                "EUR",
+                BigDecimal.valueOf(80),
+                3,
+                1,
+                "B",
+                "Via Roma",
+                "Roma",
+                "00100",
+                null,
+                null,
+                null,
+                now.minusDays(10),
+                now.minusDays(20),
+                now.minusDays(10)
+        );
+
+        when(listingRepository.findById(listingId)).thenReturn(Optional.of(listing));
+        when(userRepository.findById(userId)).thenReturn(Optional.of(new User(
+                userId,
+                "Admin",
+                "admin@example.com",
+                true,
+                adminRoleId,
+                null,
+                null,
+                now.minusYears(1),
+                now.minusMonths(1)
+        )));
+        when(roleRepository.findById(adminRoleId)).thenReturn(Optional.of(new Role(adminRoleId, RolesEnum.ADMIN.name(), "Admin", "Amministratore")));
+        when(listingStatusRepository.findById(statusId))
+                .thenReturn(Optional.of(new ListingStatus(statusId, ListingStatusesEnum.PUBLISHED.getDescription(), "Pubblicato", 2, now)));
+        when(listingStatusRepository.findByCode(ListingStatusesEnum.PENDING_DELETE.getDescription()))
+                .thenReturn(Optional.of(new ListingStatus(pendingStatusId, ListingStatusesEnum.PENDING_DELETE.getDescription(), "Pending delete", 3, now)));
+        when(listingRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        var result = listingCreationService.requestDeletion(userId, listingId);
+
+        assertThat(result.statusId()).isEqualTo(pendingStatusId);
+        assertThat(result.pendingDeleteUntil()).isNotNull();
+    }
+
+    @Test
+    void requestDeletion_whenAgentDoesNotOwnListing_throwsForbidden() {
+        var listingId = UUID.randomUUID();
+        var agentRoleId = UUID.randomUUID();
+        var now = OffsetDateTime.now();
+
+        var listing = new Listing(
+                listingId,
+                agencyId,
+                UUID.randomUUID(),
+                typeId,
+                statusId,
+                "Titolo",
+                "Descrizione",
+                120_000L,
+                "EUR",
+                BigDecimal.valueOf(80),
+                3,
+                1,
+                "B",
+                "Via Roma",
+                "Roma",
+                "00100",
+                null,
+                null,
+                null,
+                now.minusDays(10),
+                now.minusDays(20),
+                now.minusDays(10)
+        );
+
+        when(listingRepository.findById(listingId)).thenReturn(Optional.of(listing));
+        when(userRepository.findById(userId)).thenReturn(Optional.of(new User(
+                userId,
+                "Agent User",
+                "agent@example.com",
+                true,
+                agentRoleId,
+                null,
+                null,
+                now.minusYears(1),
+                now.minusMonths(1)
+        )));
+        when(roleRepository.findById(agentRoleId)).thenReturn(Optional.of(new Role(agentRoleId, RolesEnum.AGENT.name(), "Agent", "Agente")));
+        var agent = new Agent(agentId, userId, agencyId, "REA123", null, now, now);
+        when(agentRepository.findByUserId(userId)).thenReturn(Optional.of(agent));
+
+        assertThrows(ForbiddenException.class, () -> listingCreationService.requestDeletion(userId, listingId));
+    }
+
+    @Test
+    void requestDeletion_whenListingNotPublished_throwsBadRequest() {
+        var listingId = UUID.randomUUID();
+        var agentRoleId = UUID.randomUUID();
+        var now = OffsetDateTime.now();
+
+        var listing = new Listing(
+                listingId,
+                agencyId,
+                agentId,
+                typeId,
+                statusId,
+                "Titolo",
+                "Descrizione",
+                120_000L,
+                "EUR",
+                BigDecimal.valueOf(80),
+                3,
+                1,
+                "B",
+                "Via Roma",
+                "Roma",
+                "00100",
+                null,
+                null,
+                null,
+                now.minusDays(10),
+                now.minusDays(20),
+                now.minusDays(10)
+        );
+
+        when(listingRepository.findById(listingId)).thenReturn(Optional.of(listing));
+        when(userRepository.findById(userId)).thenReturn(Optional.of(new User(
+                userId,
+                "Agent User",
+                "agent@example.com",
+                true,
+                agentRoleId,
+                null,
+                null,
+                now.minusYears(1),
+                now.minusMonths(1)
+        )));
+        when(roleRepository.findById(agentRoleId)).thenReturn(Optional.of(new Role(agentRoleId, RolesEnum.AGENT.name(), "Agent", "Agente")));
+        var agent = new Agent(agentId, userId, agencyId, "REA123", null, now, now);
+        when(agentRepository.findByUserId(userId)).thenReturn(Optional.of(agent));
+        when(listingStatusRepository.findById(statusId))
+                .thenReturn(Optional.of(new ListingStatus(statusId, ListingStatusesEnum.DRAFT.getDescription(), "Bozza", 2, now)));
+
+        assertThrows(BadRequestException.class, () -> listingCreationService.requestDeletion(userId, listingId));
     }
 
     @Test

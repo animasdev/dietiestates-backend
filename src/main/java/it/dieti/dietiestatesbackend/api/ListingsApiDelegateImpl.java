@@ -2,6 +2,7 @@ package it.dieti.dietiestatesbackend.api;
 
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.enums.ParameterIn;
+import it.dieti.dietiestatesbackend.api.model.DeleteRequest;
 import it.dieti.dietiestatesbackend.api.model.Listing;
 import it.dieti.dietiestatesbackend.api.model.ListingCreate;
 import it.dieti.dietiestatesbackend.api.model.ListingGeo;
@@ -237,6 +238,23 @@ public class ListingsApiDelegateImpl implements ListingsApiDelegate {
 
         var updatedListing = listingCreationService.updateListingForUser(userId, id, command);
         return ResponseEntity.status(HttpStatus.OK).body(getFullListing(updatedListing.id()));
+    }
+
+    @Override
+    public ResponseEntity<Listing> listingsIdDeletePost(
+            @Parameter(name = "id", required = true, in = ParameterIn.PATH) UUID id,
+            DeleteRequest deleteRequest
+    ) {
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        if (!(auth instanceof JwtAuthenticationToken jwtAuth)) {
+            log.warn("Accesso non autorizzato a listingsIdDeletePost: token mancante");
+            throw UnauthorizedException.bearerTokenMissing();
+        }
+
+        var userId = UUID.fromString(jwtAuth.getToken().getSubject());
+        var listing = listingCreationService.requestDeletion(userId, id);
+        log.info("Listing {} contrassegnato per cancellazione da user {}", id, userId);
+        return ResponseEntity.status(HttpStatus.OK).body(getFullListing(listing.id()));
     }
 
     private Listing getFullListing(UUID id) {
