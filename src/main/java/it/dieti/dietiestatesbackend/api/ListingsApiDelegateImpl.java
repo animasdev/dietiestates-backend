@@ -68,6 +68,7 @@ public class ListingsApiDelegateImpl implements ListingsApiDelegate {
             Float lat,
             Float lng,
             Integer radiusMeters,
+            Boolean hasPhotos,
             Integer page,
             Integer size,
             String sort
@@ -89,6 +90,7 @@ public class ListingsApiDelegateImpl implements ListingsApiDelegate {
                 latitude,
                 longitude,
                 radiusMeters,
+                hasPhotos,
                 page,
                 size,
                 sort,

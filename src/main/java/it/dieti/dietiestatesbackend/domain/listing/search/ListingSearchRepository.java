@@ -21,6 +21,7 @@ public interface ListingSearchRepository {
             Double latitude,
             Double longitude,
             Integer radiusMeters,
+            Boolean hasPhotos,
             String sortColumn,
             boolean sortAscending,
             int page,
@@ -29,4 +30,3 @@ public interface ListingSearchRepository {
 
     record SearchResult(List<Listing> listings, long total) {}
 }
-

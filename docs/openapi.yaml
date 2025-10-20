@@ -479,6 +479,13 @@ paths:
         - name: radiusMeters
           in: query
           schema: { type: integer, minimum: 50, maximum: 100000 }
+        - name: hasPhotos
+          in: query
+          schema: { type: boolean }
+          description: |
+            Filtra gli annunci in base alla presenza di foto.
+            - `true`: restituisce solo annunci con almeno una foto.
+            - `false`: restituisce solo annunci senza foto.
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/Size'
         - $ref: '#/components/parameters/Sort'

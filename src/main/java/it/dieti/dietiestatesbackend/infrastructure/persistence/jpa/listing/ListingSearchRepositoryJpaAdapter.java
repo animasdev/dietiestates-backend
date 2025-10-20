@@ -34,6 +34,7 @@ public class ListingSearchRepositoryJpaAdapter implements ListingSearchRepositor
         buildRoomsCondition(filters, params, whereClauses);
         buildEnergyClassCondition(filters, params, whereClauses);
         buildRadiusCondition(filters, params, whereClauses);
+        buildHasPhotosCondition(filters, whereClauses);
         String featureCondition = buildFeatureCondition(filters, params);
 
         var whereClause = whereClauses.isEmpty()
@@ -154,6 +155,20 @@ public class ListingSearchRepositoryJpaAdapter implements ListingSearchRepositor
             params.put("latitude", filters.latitude());
             params.put("longitude", filters.longitude());
             params.put("radius", filters.radiusMeters());
+        }
+    }
+
+    private static void buildHasPhotosCondition(
+            SearchFilters filters,
+            List<String> whereClauses
+    ) {
+        if (filters.hasPhotos() == null) {
+            return;
+        }
+        if (Boolean.TRUE.equals(filters.hasPhotos())) {
+            whereClauses.add("EXISTS (SELECT 1 FROM listing_media lm WHERE lm.listing_id = l.id)");
+        } else {
+            whereClauses.add("NOT EXISTS (SELECT 1 FROM listing_media lm WHERE lm.listing_id = l.id)");
         }
     }
 
