@@ -116,6 +116,12 @@ public class ListingCreationService {
         Objects.requireNonNull(userId, "userId is required");
         Objects.requireNonNull(command, "command is required");
 
+        var userRole = resolveUserRole(userId);
+        if (userRole == RolesEnum.ADMIN || userRole == RolesEnum.SUPERADMIN) {
+            log.warn("User {} with role {} attempted to create a listing", userId, userRole);
+            throw ForbiddenException.actionRequiresRole(RolesEnum.AGENT.name());
+        }
+
         var agent = agentRepository.findByUserId(userId)
                 .orElseThrow(AgentProfileRequiredException::new);
 

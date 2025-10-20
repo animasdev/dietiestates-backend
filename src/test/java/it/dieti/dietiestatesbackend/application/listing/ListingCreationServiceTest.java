@@ -1,5 +1,6 @@
 package it.dieti.dietiestatesbackend.application.listing;
 
+import it.dieti.dietiestatesbackend.application.exception.ForbiddenException;
 import it.dieti.dietiestatesbackend.application.exception.listing.AgentProfileRequiredException;
 import it.dieti.dietiestatesbackend.application.exception.listing.CoordinatesValidationException;
 import it.dieti.dietiestatesbackend.application.exception.listing.PriceValidationException;
@@ -168,6 +169,43 @@ class ListingCreationServiceTest {
         );
 
         assertThrows(AgentProfileRequiredException.class, () -> listingCreationService.createListingForUser(userId, command));
+    }
+
+    @Test
+    void createListingForUser_whenUserIsAdmin_throwsForbidden() {
+        var adminRoleId = UUID.randomUUID();
+        when(userRepository.findById(userId)).thenReturn(Optional.of(new User(
+                userId,
+                "Admin",
+                "admin@example.com",
+                false,
+                adminRoleId,
+                null,
+                null,
+                OffsetDateTime.now(),
+                OffsetDateTime.now()
+        )));
+        when(roleRepository.findById(adminRoleId)).thenReturn(Optional.of(new Role(adminRoleId, RolesEnum.ADMIN.name(), "Admin", "Amministratore")));
+
+        var command = new ListingCreationService.CreateListingCommand(
+                "Monolocale",
+                "Descrizione",
+                "SALE",
+                100_000L,
+                null,
+                null,
+                null,
+                null,
+                "Via",
+                "City",
+                null,
+                41.0,
+                12.5,
+                false,
+                List.of()
+        );
+
+        assertThrows(ForbiddenException.class, () -> listingCreationService.createListingForUser(userId, command));
     }
 
     @Test
