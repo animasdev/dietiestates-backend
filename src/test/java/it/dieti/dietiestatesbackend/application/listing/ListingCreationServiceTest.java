@@ -12,6 +12,11 @@ import it.dieti.dietiestatesbackend.domain.listing.ListingTypeRepository;
 import it.dieti.dietiestatesbackend.domain.listing.status.ListingStatus;
 import it.dieti.dietiestatesbackend.domain.listing.status.ListingStatusRepository;
 import it.dieti.dietiestatesbackend.application.feature.FeatureService;
+import it.dieti.dietiestatesbackend.domain.user.User;
+import it.dieti.dietiestatesbackend.domain.user.UserRepository;
+import it.dieti.dietiestatesbackend.domain.user.role.Role;
+import it.dieti.dietiestatesbackend.domain.user.role.RoleRepository;
+import it.dieti.dietiestatesbackend.domain.user.role.RolesEnum;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -43,6 +48,10 @@ class ListingCreationServiceTest {
     private ListingStatusRepository listingStatusRepository;
     @Mock
     private AgentRepository agentRepository;
+    @Mock
+    private UserRepository userRepository;
+    @Mock
+    private RoleRepository roleRepository;
     @Mock
     private FeatureService featureService;
 
@@ -236,6 +245,81 @@ class ListingCreationServiceTest {
         );
 
         assertThrows(CoordinatesValidationException.class, () -> listingCreationService.createListingForUser(userId, command));
+    }
+
+    @Test
+    void updateListingForUser_allowsAdminToEditListingsRegardlessOfOwnership() {
+        var listingId = UUID.randomUUID();
+        var adminRoleId = UUID.randomUUID();
+        var listingOwnerAgentId = UUID.randomUUID();
+        var listing = new Listing(
+                listingId,
+                UUID.randomUUID(),
+                listingOwnerAgentId,
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                "Vecchio Titolo",
+                "Vecchia descrizione",
+                100_000L,
+                "EUR",
+                BigDecimal.valueOf(80),
+                3,
+                1,
+                "B",
+                "Via Vecchia",
+                "Pisa",
+                "56100",
+                null,
+                null,
+                null,
+                OffsetDateTime.now().minusDays(10),
+                OffsetDateTime.now().minusDays(20),
+                OffsetDateTime.now().minusDays(10)
+        );
+
+        when(userRepository.findById(userId)).thenReturn(Optional.of(new User(
+                userId,
+                "Admin User",
+                "admin@example.com",
+                false,
+                adminRoleId,
+                null,
+                null,
+                OffsetDateTime.now(),
+                OffsetDateTime.now()
+        )));
+        when(roleRepository.findById(adminRoleId)).thenReturn(Optional.of(new Role(adminRoleId, RolesEnum.ADMIN.name(), "Admin", "Amministratore")));
+        when(agentRepository.findByUserId(userId)).thenReturn(Optional.empty());
+        when(listingRepository.findById(listingId)).thenReturn(Optional.of(listing));
+
+        ArgumentCaptor<Listing> savedListingCaptor = ArgumentCaptor.forClass(Listing.class);
+        when(listingRepository.save(savedListingCaptor.capture())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        var command = new ListingCreationService.UpdateListingCommand(
+                "Nuovo Titolo",
+                "Nuova descrizione",
+                120_000L,
+                BigDecimal.valueOf(90),
+                4,
+                2,
+                "A",
+                "Via Nuova",
+                "Firenze",
+                "50100",
+                43.7696,
+                11.2558,
+                List.of("ASCENSORE")
+        );
+
+        var result = listingCreationService.updateListingForUser(userId, listingId, command);
+
+        assertThat(result.title()).isEqualTo("Nuovo Titolo");
+        assertThat(result.ownerAgentId()).isEqualTo(listingOwnerAgentId);
+
+        var persisted = savedListingCaptor.getValue();
+        assertThat(persisted.title()).isEqualTo("Nuovo Titolo");
+        assertThat(persisted.addressLine()).isEqualTo("Via Nuova");
+        assertThat(persisted.ownerAgentId()).isEqualTo(listingOwnerAgentId);
     }
 
     private void mockAgentWithBasics() {

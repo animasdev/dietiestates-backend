@@ -20,6 +20,9 @@ import it.dieti.dietiestatesbackend.domain.listing.status.ListingStatusRepositor
 import it.dieti.dietiestatesbackend.domain.listing.ListingType;
 import it.dieti.dietiestatesbackend.domain.listing.status.ListingStatus;
 import it.dieti.dietiestatesbackend.domain.listing.status.ListingStatusesEnum;
+import it.dieti.dietiestatesbackend.domain.user.UserRepository;
+import it.dieti.dietiestatesbackend.domain.user.role.RoleRepository;
+import it.dieti.dietiestatesbackend.domain.user.role.RolesEnum;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.Point;
@@ -47,6 +50,8 @@ public class ListingCreationService {
     private final ListingTypeRepository listingTypeRepository;
     private final ListingStatusRepository listingStatusRepository;
     private final AgentRepository agentRepository;
+    private final UserRepository userRepository;
+    private final RoleRepository roleRepository;
     private final FeatureService featureService;
     private static final Logger log = LoggerFactory.getLogger(ListingCreationService.class);
 
@@ -54,11 +59,15 @@ public class ListingCreationService {
                                   ListingTypeRepository listingTypeRepository,
                                   ListingStatusRepository listingStatusRepository,
                                   AgentRepository agentRepository,
+                                  UserRepository userRepository,
+                                  RoleRepository roleRepository,
                                   FeatureService featureService) {
         this.listingRepository = listingRepository;
         this.listingTypeRepository = listingTypeRepository;
         this.listingStatusRepository = listingStatusRepository;
         this.agentRepository = agentRepository;
+        this.userRepository = userRepository;
+        this.roleRepository = roleRepository;
         this.featureService = featureService;
     }
 
@@ -189,9 +198,21 @@ public class ListingCreationService {
         Objects.requireNonNull(listingId, "listingId is required");
         Objects.requireNonNull(command, "command is required");
 
-        var agent = requireAgent(userId);
+        var userRole = resolveUserRole(userId);
+        boolean isPrivileged = userRole == RolesEnum.ADMIN || userRole == RolesEnum.SUPERADMIN;
+
+        Agent agent = null;
+        if (isPrivileged) {
+            agent = agentRepository.findByUserId(userId).orElse(null);
+        } else {
+            agent = requireAgent(userId);
+        }
         var listing = requireListing(listingId);
-        ensureOwnership(agent, listing, listingId);
+        if (!isPrivileged) {
+            ensureOwnership(agent, listing, listingId);
+        } else {
+            log.info("Privileged user {} with role {} updated listing {}", userId, userRole, listingId);
+        }
 
         var updatedListing = applyListingUpdates(listing, command);
         var saved = listingRepository.save(updatedListing);
@@ -217,6 +238,27 @@ public class ListingCreationService {
             log.warn("Agent {} attempted to update listing {} not owned", agent.id(), listingId);
             throw ForbiddenException.of("Permesso negato: puoi modificare solo gli annunci che hai creato.");
         }
+    }
+
+    private RolesEnum resolveUserRole(UUID userId) {
+        var userOpt = userRepository.findById(userId);
+        if (userOpt.isEmpty()) {
+            return null;
+        }
+        var roleOpt = roleRepository.findById(userOpt.get().roleId());
+        if (roleOpt.isEmpty()) {
+            return null;
+        }
+        return roleOpt
+                .map(role -> {
+                    try {
+                        return RolesEnum.valueOf(role.code());
+                    } catch (IllegalArgumentException ex) {
+                        log.warn("Unsupported role code {} for user {}", role.code(), userId, ex);
+                        return null;
+                    }
+                })
+                .orElse(null);
     }
 
     private Listing applyListingUpdates(Listing listing, UpdateListingCommand command) {
