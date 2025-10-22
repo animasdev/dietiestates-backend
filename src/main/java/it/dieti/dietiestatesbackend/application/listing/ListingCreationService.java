@@ -11,6 +11,7 @@ import it.dieti.dietiestatesbackend.application.exception.listing.ListingStatusU
 import it.dieti.dietiestatesbackend.application.exception.listing.ListingTypeNotSupportedException;
 import it.dieti.dietiestatesbackend.application.exception.listing.PriceValidationException;
 import it.dieti.dietiestatesbackend.application.feature.FeatureService;
+import it.dieti.dietiestatesbackend.application.notification.NotificationService;
 import it.dieti.dietiestatesbackend.domain.agent.Agent;
 import it.dieti.dietiestatesbackend.domain.agent.AgentRepository;
 import it.dieti.dietiestatesbackend.domain.listing.Listing;
@@ -54,6 +55,8 @@ public class ListingCreationService {
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final FeatureService featureService;
+    private final NotificationService notificationService;
+
     private static final Logger log = LoggerFactory.getLogger(ListingCreationService.class);
     private static final String INTERNAL_ERROR_MESSAGE = "Si è verificato un errore interno. Riprova più tardi.";
     private static final String USER_ID_REQUIRED_MESSAGE = "userId is required";
@@ -65,7 +68,7 @@ public class ListingCreationService {
                                   AgentRepository agentRepository,
                                   UserRepository userRepository,
                                   RoleRepository roleRepository,
-                                  FeatureService featureService) {
+                                  FeatureService featureService, NotificationService notificationService) {
         this.listingRepository = listingRepository;
         this.listingTypeRepository = listingTypeRepository;
         this.listingStatusRepository = listingStatusRepository;
@@ -73,6 +76,7 @@ public class ListingCreationService {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.featureService = featureService;
+        this.notificationService = notificationService;
     }
 
     public record CreateListingCommand(
@@ -231,7 +235,7 @@ public class ListingCreationService {
     }
 
     @Transactional
-    public Listing requestDeletion(UUID userId, UUID listingId) {
+    public Listing requestDeletion(UUID userId, UUID listingId, String reason) {
         Objects.requireNonNull(userId, USER_ID_REQUIRED_MESSAGE);
         Objects.requireNonNull(listingId, LISTING_ID_REQUIRED_MESSAGE);
 
@@ -239,13 +243,25 @@ public class ListingCreationService {
         var userRole = resolveUserRole(userId);
         boolean isPrivileged = userRole == RolesEnum.ADMIN || userRole == RolesEnum.SUPERADMIN;
 
+        Agent agent = null;
         if (!isPrivileged) {
-            var agent = requireAgent(userId);
+            agent = requireAgent(userId);
             if (!agent.id().equals(listing.ownerAgentId())) {
                 log.warn("Agent {} attempted to delete listing {} not owned", agent.id(), listingId);
                 throw ForbiddenException.of("Permesso negato: puoi cancellare solo gli annunci che hai creato.");
             }
+        } else {
+            agent = agentRepository.findById(listing.ownerAgentId()).orElseThrow(()->{
+                log.error("Profilo agente {} non trovato durante delete listing {}", listing.ownerAgentId(),listingId);
+                return new InternalServerErrorException(INTERNAL_ERROR_MESSAGE);
+            });
         }
+
+        Agent finalAgent = agent;
+        var agentUser = userRepository.findById(agent.userId()).orElseThrow(()->{
+            log.error("Uutente {} non trovato durante delete listing {}", finalAgent.id(),listingId);
+            return new InternalServerErrorException(INTERNAL_ERROR_MESSAGE);
+        });
 
         var listingStatus = listingStatusRepository.findById(listing.statusId())
                 .orElseThrow(() -> {
@@ -291,7 +307,11 @@ public class ListingCreationService {
                 listing.createdAt(),
                 now
         );
-
+        if (isPrivileged) {
+            notificationService.sendDeleteListing(agentUser.email(),listing.title(),listingId,reason);
+        } else {
+            notificationService.sendDeleteListing(agentUser.email(),listing.title(),listingId,null);
+        }
         return listingRepository.save(updatedListing);
     }
 

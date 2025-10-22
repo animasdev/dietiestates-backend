@@ -15,6 +15,7 @@ import it.dieti.dietiestatesbackend.domain.listing.status.ListingStatus;
 import it.dieti.dietiestatesbackend.domain.listing.status.ListingStatusRepository;
 import it.dieti.dietiestatesbackend.domain.listing.status.ListingStatusesEnum;
 import it.dieti.dietiestatesbackend.application.feature.FeatureService;
+import it.dieti.dietiestatesbackend.application.notification.NotificationService;
 import it.dieti.dietiestatesbackend.domain.user.User;
 import it.dieti.dietiestatesbackend.domain.user.UserRepository;
 import it.dieti.dietiestatesbackend.domain.user.role.Role;
@@ -40,6 +41,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -59,6 +61,8 @@ class ListingCreationServiceTest {
     private RoleRepository roleRepository;
     @Mock
     private FeatureService featureService;
+    @Mock
+    private NotificationService notificationService;
 
     @InjectMocks
     private ListingCreationService listingCreationService;
@@ -290,11 +294,12 @@ class ListingCreationServiceTest {
                 .thenReturn(Optional.of(new ListingStatus(pendingStatusId, ListingStatusesEnum.PENDING_DELETE.getDescription(), "Pending delete", 3, now)));
         when(listingRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
-        var result = listingCreationService.requestDeletion(userId, listingId);
+        var result = listingCreationService.requestDeletion(userId, listingId, null);
 
         assertThat(result.statusId()).isEqualTo(pendingStatusId);
         assertThat(result.pendingDeleteUntil()).isNotNull();
         assertThat(result.pendingDeleteUntil()).isCloseTo(now.plusHours(24), within(1, ChronoUnit.MINUTES));
+        verify(notificationService).sendDeleteListing("agent@example.com", "Titolo", listingId, null);
     }
 
     @Test
@@ -346,12 +351,28 @@ class ListingCreationServiceTest {
                 .thenReturn(Optional.of(new ListingStatus(statusId, ListingStatusesEnum.PUBLISHED.getDescription(), "Pubblicato", 2, now)));
         when(listingStatusRepository.findByCode(ListingStatusesEnum.PENDING_DELETE.getDescription()))
                 .thenReturn(Optional.of(new ListingStatus(pendingStatusId, ListingStatusesEnum.PENDING_DELETE.getDescription(), "Pending delete", 3, now)));
+        var ownerAgent = new Agent(agentId, UUID.randomUUID(), agencyId, "REA123", null, now, now);
+        when(agentRepository.findById(agentId)).thenReturn(Optional.of(ownerAgent));
+        var ownerUserRoleId = UUID.randomUUID();
+        when(userRepository.findById(ownerAgent.userId())).thenReturn(Optional.of(new User(
+                ownerAgent.userId(),
+                "Owner agent",
+                "owner@example.com",
+                true,
+                ownerUserRoleId,
+                null,
+                null,
+                now.minusYears(2),
+                now.minusMonths(2)
+        )));
         when(listingRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
-        var result = listingCreationService.requestDeletion(userId, listingId);
+        var reason = "Violazione termini";
+        var result = listingCreationService.requestDeletion(userId, listingId, reason);
 
         assertThat(result.statusId()).isEqualTo(pendingStatusId);
         assertThat(result.pendingDeleteUntil()).isNotNull();
+        verify(notificationService).sendDeleteListing("owner@example.com", "Titolo", listingId, reason);
     }
 
     @Test
@@ -401,7 +422,7 @@ class ListingCreationServiceTest {
         var agent = new Agent(agentId, userId, agencyId, "REA123", null, now, now);
         when(agentRepository.findByUserId(userId)).thenReturn(Optional.of(agent));
 
-        assertThrows(ForbiddenException.class, () -> listingCreationService.requestDeletion(userId, listingId));
+        assertThrows(ForbiddenException.class, () -> listingCreationService.requestDeletion(userId, listingId, null));
     }
 
     @Test
@@ -453,7 +474,7 @@ class ListingCreationServiceTest {
         when(listingStatusRepository.findById(statusId))
                 .thenReturn(Optional.of(new ListingStatus(statusId, ListingStatusesEnum.DRAFT.getDescription(), "Bozza", 2, now)));
 
-        assertThrows(BadRequestException.class, () -> listingCreationService.requestDeletion(userId, listingId));
+        assertThrows(BadRequestException.class, () -> listingCreationService.requestDeletion(userId, listingId, null));
     }
 
     @Test

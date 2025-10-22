@@ -252,7 +252,7 @@ public class ListingsApiDelegateImpl implements ListingsApiDelegate {
         }
 
         var userId = UUID.fromString(jwtAuth.getToken().getSubject());
-        var listing = listingCreationService.requestDeletion(userId, id);
+        var listing = listingCreationService.requestDeletion(userId, id,deleteRequest.getReason());
         log.info("Listing {} contrassegnato per cancellazione da user {}", id, userId);
         return ResponseEntity.status(HttpStatus.OK).body(getFullListing(listing.id()));
     }
