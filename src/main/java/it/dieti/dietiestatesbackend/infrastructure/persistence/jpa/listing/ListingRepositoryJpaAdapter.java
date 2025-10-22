@@ -2,11 +2,13 @@ package it.dieti.dietiestatesbackend.infrastructure.persistence.jpa.listing;
 
 import it.dieti.dietiestatesbackend.domain.listing.Listing;
 import it.dieti.dietiestatesbackend.domain.listing.ListingRepository;
+import it.dieti.dietiestatesbackend.domain.listing.status.ListingStatusesEnum;
 import it.dieti.dietiestatesbackend.infrastructure.persistence.jpa.agent.AgentEntity;
 import it.dieti.dietiestatesbackend.infrastructure.persistence.jpa.agency.AgencyEntity;
 import org.springframework.stereotype.Repository;
 
 import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -69,5 +71,14 @@ public class ListingRepositoryJpaAdapter implements ListingRepository {
     @Override
     public Optional<Listing> findById(UUID id) {
         return jpaRepository.findById(id).map(ListingEntityMapper::toDomain);
+    }
+
+    @Override
+    public List<Listing> findPendingDeleteBefore(OffsetDateTime threshold) {
+        return jpaRepository
+                .findAllByStatus_CodeAndPendingDeleteUntilBefore(ListingStatusesEnum.PENDING_DELETE.getDescription(), threshold)
+                .stream()
+                .map(ListingEntityMapper::toDomain)
+                .toList();
     }
 }

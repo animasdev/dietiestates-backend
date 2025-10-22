@@ -23,6 +23,9 @@ app:
   bootstrap:
     superadmin:
       enabled: false
+  listings:
+    deletion-scheduler:
+      enabled: false
 
 logging:
   level:
