@@ -90,6 +90,11 @@ components:
           type: string
           nullable: true
           enum: [A4, A3, A2, A1, B, C, D, E, F, G]
+        contractDescription: { type: string, nullable: true }
+        securityDepositCents: { type: integer, format: int64, nullable: true }
+        furnished: { type: boolean, nullable: true }
+        condoFeeCents: { type: integer, format: int64, nullable: true }
+        petsAllowed: { type: boolean, nullable: true }
         features:
           type: array
           items: { type: string }
@@ -121,6 +126,11 @@ components:
         energyClass:
           type: string
           enum: [A4, A3, A2, A1, B, C, D, E, F, G]
+        contractDescription: { type: string }
+        securityDepositCents: { type: integer, format: int64 }
+        furnished: { type: boolean, default: false }
+        condoFeeCents: { type: integer, format: int64 }
+        petsAllowed: { type: boolean, default: false }
         features:
           type: array
           items: { type: string }
@@ -143,6 +153,11 @@ components:
         energyClass:
           type: string
           enum: [A4, A3, A2, A1, B, C, D, E, F, G]
+        contractDescription: { type: string }
+        securityDepositCents: { type: integer, format: int64 }
+        furnished: { type: boolean }
+        condoFeeCents: { type: integer, format: int64 }
+        petsAllowed: { type: boolean }
         address: { type: string }
         city: { type: string }
         postalCode: { type: string }

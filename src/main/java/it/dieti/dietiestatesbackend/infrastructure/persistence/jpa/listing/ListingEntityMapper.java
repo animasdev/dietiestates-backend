@@ -25,6 +25,11 @@ final class ListingEntityMapper {
                 entity.getRooms(),
                 entity.getFloor(),
                 entity.getEnergyClass(),
+                entity.getContractDescription(),
+                entity.getSecurityDepositCents() != null ? entity.getSecurityDepositCents() : 0L,
+                entity.isFurnished(),
+                entity.getCondoFeeCents() != null ? entity.getCondoFeeCents() : 0L,
+                entity.isPetsAllowed(),
                 entity.getAddressLine(),
                 entity.getCity(),
                 entity.getPostalCode(),
@@ -37,4 +42,3 @@ final class ListingEntityMapper {
         );
     }
 }
-

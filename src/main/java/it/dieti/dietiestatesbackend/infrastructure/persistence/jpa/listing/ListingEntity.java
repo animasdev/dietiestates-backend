@@ -62,6 +62,21 @@ public class ListingEntity {
     @Column(name = "energy_class", nullable = false)
     private String energyClass;
 
+    @Column(name = "contract_description")
+    private String contractDescription;
+
+    @Column(name = "security_deposit_cents", nullable = false)
+    private Long securityDepositCents;
+
+    @Column(name = "furnished", nullable = false)
+    private boolean furnished;
+
+    @Column(name = "condo_fee_cents", nullable = false)
+    private Long condoFeeCents;
+
+    @Column(name = "pets_allowed", nullable = false)
+    private boolean petsAllowed;
+
     @Column(name = "address_line", nullable = false)
     private String addressLine;
 

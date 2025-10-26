@@ -55,6 +55,11 @@ public class ListingRepositoryJpaAdapter implements ListingRepository {
         entity.setRooms(listing.rooms());
         entity.setFloor(listing.floor());
         entity.setEnergyClass(listing.energyClass());
+        entity.setContractDescription(listing.contractDescription());
+        entity.setSecurityDepositCents(listing.securityDepositCents());
+        entity.setFurnished(listing.furnished());
+        entity.setCondoFeeCents(listing.condoFeeCents());
+        entity.setPetsAllowed(listing.petsAllowed());
         entity.setAddressLine(listing.addressLine());
         entity.setCity(listing.city());
         entity.setPostalCode(listing.postalCode());

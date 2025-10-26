@@ -51,8 +51,10 @@ public class ListingCreationService {
     private static final List<String> SUPPORTED_ENERGY_CLASSES_ORDERED = List.of("A4", "A3", "A2", "A1", "B", "C", "D", "E", "F", "G");
     private static final Set<String> SUPPORTED_ENERGY_CLASSES = Set.copyOf(SUPPORTED_ENERGY_CLASSES_ORDERED);
     private static final String ENERGY_CLASS_FIELD = "energyClass";
-    private static final String ENERGY_CLASS_REQUIRED_MESSAGE = "Il campo '"+ENERGY_CLASS_FIELD+"' è obbligatorio.";
+    private static final String ENERGY_CLASS_REQUIRED_MESSAGE = "Il campo '" + ENERGY_CLASS_FIELD + "' è obbligatorio.";
     private static final String ENERGY_CLASS_INVALID_MESSAGE = "Valore non valido per 'energyClass'. Valori ammessi: " + String.join(", ", SUPPORTED_ENERGY_CLASSES_ORDERED) + ".";
+    private static final String SECURITY_DEPOSIT_NON_NEGATIVE_MESSAGE = "Il campo 'securityDepositCents' deve essere maggiore o uguale a zero.";
+    private static final String CONDO_FEE_NON_NEGATIVE_MESSAGE = "Il campo 'condoFeeCents' deve essere maggiore o uguale a zero.";
 
     private final ListingRepository listingRepository;
     private final ListingTypeRepository listingTypeRepository;
@@ -94,6 +96,11 @@ public class ListingCreationService {
             Integer rooms,
             Integer floor,
             String energyClass,
+            String contractDescription,
+            Long securityDepositCents,
+            Boolean furnished,
+            Long condoFeeCents,
+            Boolean petsAllowed,
             String addressLine,
             String city,
             String postalCode,
@@ -111,6 +118,11 @@ public class ListingCreationService {
             Integer rooms,
             Integer floor,
             String energyClass,
+            String contractDescription,
+            Long securityDepositCents,
+            Boolean furnished,
+            Long condoFeeCents,
+            Boolean petsAllowed,
             String addressLine,
             String city,
             String postalCode,
@@ -139,38 +151,10 @@ public class ListingCreationService {
         var agent = agentRepository.findByUserId(userId)
                 .orElseThrow(AgentProfileRequiredException::new);
 
-        var title = normalize(command.title());
-        var description = normalize(command.description());
-        var addressLine = normalize(command.addressLine());
-        var city = normalize(command.city());
-        var energyClassRaw = normalize(command.energyClass());
-        String normalizedEnergyClass = null;
-        List<ApplicationHttpException.FieldErrorDetail> fieldErrors = new ArrayList<>();
-        if (title.isBlank()) {
-            fieldErrors.add(new ApplicationHttpException.FieldErrorDetail("title", "Il campo 'title' è obbligatorio."));
-        }
-        if (description.isBlank()) {
-            fieldErrors.add(new ApplicationHttpException.FieldErrorDetail("description", "Il campo 'description' è obbligatorio."));
-        }
-        if (addressLine.isBlank()) {
-            fieldErrors.add(new ApplicationHttpException.FieldErrorDetail("address", "Il campo 'address' è obbligatorio."));
-        }
-        if (city.isBlank()) {
-            fieldErrors.add(new ApplicationHttpException.FieldErrorDetail("city", "Il campo 'city' è obbligatorio."));
-        }
-        if (energyClassRaw.isBlank()) {
-            fieldErrors.add(new ApplicationHttpException.FieldErrorDetail(ENERGY_CLASS_FIELD, ENERGY_CLASS_REQUIRED_MESSAGE));
-        } else {
-            var candidate = energyClassRaw.toUpperCase(Locale.ROOT);
-            if (!SUPPORTED_ENERGY_CLASSES.contains(candidate)) {
-                fieldErrors.add(new ApplicationHttpException.FieldErrorDetail(ENERGY_CLASS_FIELD, ENERGY_CLASS_INVALID_MESSAGE));
-            } else {
-                normalizedEnergyClass = candidate;
-            }
-        }
-        if (!fieldErrors.isEmpty()) {
+        var normalizedInput = normalizeAndValidateCreateInputs(command);
+        if (!normalizedInput.fieldErrors().isEmpty()) {
             log.warn("Richiesta listing non valida per user {}: campi mancanti", userId);
-            throw BadRequestException.forFields("Richiesta non valida: completare tutti i campi obbligatori.", fieldErrors);
+            throw BadRequestException.forFields("Richiesta non valida: completare tutti i campi obbligatori.", normalizedInput.fieldErrors());
         }
 
 
@@ -200,16 +184,21 @@ public class ListingCreationService {
                 agent.id(),
                 listingType.id(),
                 status.id(),
-                title,
-                description,
+                normalizedInput.title(),
+                normalizedInput.description(),
                 priceCents,
                 DEFAULT_CURRENCY,
                 command.sizeSqm(),
                 command.rooms(),
                 command.floor(),
-                normalizedEnergyClass,
-                addressLine,
-                city,
+                normalizedInput.energyClass(),
+                normalizedInput.contractDescription(),
+                normalizedInput.securityDepositCents(),
+                normalizedInput.furnished(),
+                normalizedInput.condoFeeCents(),
+                normalizedInput.petsAllowed(),
+                normalizedInput.addressLine(),
+                normalizedInput.city(),
                 normalizeOptional(command.postalCode()),
                 geo,
                 null,
@@ -315,6 +304,11 @@ public class ListingCreationService {
                 listing.rooms(),
                 listing.floor(),
                 listing.energyClass(),
+                listing.contractDescription(),
+                listing.securityDepositCents(),
+                listing.furnished(),
+                listing.condoFeeCents(),
+                listing.petsAllowed(),
                 listing.addressLine(),
                 listing.city(),
                 listing.postalCode(),
@@ -384,6 +378,23 @@ public class ListingCreationService {
         var rooms = command.rooms() != null ? command.rooms() : listing.rooms();
         var floor = command.floor() != null ? command.floor() : listing.floor();
         var energyClass = resolveUpdatedEnergyClass(command.energyClass(), listing.energyClass());
+        var contractDescription = command.contractDescription() != null
+                ? normalizeOptional(command.contractDescription())
+                : listing.contractDescription();
+        var securityDepositCents = resolveUpdatedNonNegativeAmount(
+                listing.securityDepositCents(),
+                command.securityDepositCents(),
+                "securityDepositCents",
+                SECURITY_DEPOSIT_NON_NEGATIVE_MESSAGE
+        );
+        var furnished = command.furnished() != null ? command.furnished() : listing.furnished();
+        var condoFeeCents = resolveUpdatedNonNegativeAmount(
+                listing.condoFeeCents(),
+                command.condoFeeCents(),
+                "condoFeeCents",
+                CONDO_FEE_NON_NEGATIVE_MESSAGE
+        );
+        var petsAllowed = command.petsAllowed() != null ? command.petsAllowed() : listing.petsAllowed();
         var postalCode = command.postalCode() != null ? normalizeOptional(command.postalCode()) : listing.postalCode();
         var geo = resolveUpdatedGeo(listing.geo(), command.latitude(), command.longitude());
 
@@ -401,6 +412,11 @@ public class ListingCreationService {
                 rooms,
                 floor,
                 energyClass,
+                contractDescription,
+                securityDepositCents,
+                furnished,
+                condoFeeCents,
+                petsAllowed,
                 addressLine,
                 city,
                 postalCode,
@@ -443,6 +459,76 @@ public class ListingCreationService {
         }
         validateCoordinates(latitude, longitude);
         return GEOMETRY_FACTORY.createPoint(new Coordinate(longitude, latitude));
+    }
+
+    private long resolveUpdatedNonNegativeAmount(long currentValue, Long requestedValue, String fieldName, String message) {
+        if (requestedValue == null) {
+            return currentValue;
+        }
+        if (requestedValue < 0) {
+            throw BadRequestException.forField(fieldName, message);
+        }
+        return requestedValue;
+    }
+
+    private CreateListingValidation normalizeAndValidateCreateInputs(CreateListingCommand command) {
+        var title = normalize(command.title());
+        var description = normalize(command.description());
+        var addressLine = normalize(command.addressLine());
+        var city = normalize(command.city());
+        var energyClassRaw = normalize(command.energyClass());
+        var contractDescription = normalizeOptional(command.contractDescription());
+        long securityDepositCents = command.securityDepositCents() != null ? command.securityDepositCents() : 0L;
+        long condoFeeCents = command.condoFeeCents() != null ? command.condoFeeCents() : 0L;
+        boolean furnished = Boolean.TRUE.equals(command.furnished());
+        boolean petsAllowed = Boolean.TRUE.equals(command.petsAllowed());
+
+        List<ApplicationHttpException.FieldErrorDetail> errors = new ArrayList<>();
+        if (title.isBlank()) {
+            errors.add(new ApplicationHttpException.FieldErrorDetail("title", "Il campo 'title' è obbligatorio."));
+        }
+        if (description.isBlank()) {
+            errors.add(new ApplicationHttpException.FieldErrorDetail("description", "Il campo 'description' è obbligatorio."));
+        }
+        if (addressLine.isBlank()) {
+            errors.add(new ApplicationHttpException.FieldErrorDetail("address", "Il campo 'address' è obbligatorio."));
+        }
+        if (city.isBlank()) {
+            errors.add(new ApplicationHttpException.FieldErrorDetail("city", "Il campo 'city' è obbligatorio."));
+        }
+
+        String normalizedEnergyClass = null;
+        if (energyClassRaw.isBlank()) {
+            errors.add(new ApplicationHttpException.FieldErrorDetail(ENERGY_CLASS_FIELD, ENERGY_CLASS_REQUIRED_MESSAGE));
+        } else {
+            var candidate = energyClassRaw.toUpperCase(Locale.ROOT);
+            if (!SUPPORTED_ENERGY_CLASSES.contains(candidate)) {
+                errors.add(new ApplicationHttpException.FieldErrorDetail(ENERGY_CLASS_FIELD, ENERGY_CLASS_INVALID_MESSAGE));
+            } else {
+                normalizedEnergyClass = candidate;
+            }
+        }
+
+        if (securityDepositCents < 0) {
+            errors.add(new ApplicationHttpException.FieldErrorDetail("securityDepositCents", SECURITY_DEPOSIT_NON_NEGATIVE_MESSAGE));
+        }
+        if (condoFeeCents < 0) {
+            errors.add(new ApplicationHttpException.FieldErrorDetail("condoFeeCents", CONDO_FEE_NON_NEGATIVE_MESSAGE));
+        }
+
+        return new CreateListingValidation(
+                title,
+                description,
+                addressLine,
+                city,
+                normalizedEnergyClass,
+                contractDescription,
+                securityDepositCents,
+                furnished,
+                condoFeeCents,
+                petsAllowed,
+                List.copyOf(errors)
+        );
     }
 
     public ListingDetails getListingDetails(UUID listingId) {
@@ -513,4 +599,18 @@ public class ListingCreationService {
         var normalized = normalize(value);
         return normalized.isEmpty() ? null : normalized;
     }
+
+    private record CreateListingValidation(
+            String title,
+            String description,
+            String addressLine,
+            String city,
+            String energyClass,
+            String contractDescription,
+            long securityDepositCents,
+            boolean furnished,
+            long condoFeeCents,
+            boolean petsAllowed,
+            List<ApplicationHttpException.FieldErrorDetail> fieldErrors
+    ) {}
 }

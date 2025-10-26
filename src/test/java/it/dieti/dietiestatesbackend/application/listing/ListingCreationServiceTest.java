@@ -108,6 +108,11 @@ class ListingCreationServiceTest {
                     listing.rooms(),
                     listing.floor(),
                     listing.energyClass(),
+                    listing.contractDescription(),
+                    listing.securityDepositCents(),
+                    listing.furnished(),
+                    listing.condoFeeCents(),
+                    listing.petsAllowed(),
                     listing.addressLine(),
                     listing.city(),
                     listing.postalCode(),
@@ -129,6 +134,11 @@ class ListingCreationServiceTest {
                 4,
                 2,
                 "A2",
+                "Contratto 4+4",
+                360000L,
+                true,
+                12000L,
+                true,
                 "Via Roma 10",
                 "Napoli",
                 "80100",
@@ -149,6 +159,11 @@ class ListingCreationServiceTest {
         assertThat(toSave.getValue().currency()).isEqualTo("EUR");
         assertThat(toSave.getValue().sizeSqm()).isEqualTo(BigDecimal.valueOf(95.5));
         assertThat(toSave.getValue().title()).isEqualTo("Appartamento Centro");
+        assertThat(toSave.getValue().contractDescription()).isEqualTo("Contratto 4+4");
+        assertThat(toSave.getValue().securityDepositCents()).isEqualTo(360000L);
+        assertThat(toSave.getValue().furnished()).isTrue();
+        assertThat(toSave.getValue().condoFeeCents()).isEqualTo(12000L);
+        assertThat(toSave.getValue().petsAllowed()).isTrue();
         assertThat(toSave.getValue().geo()).isInstanceOf(Point.class);
         assertThat(toSave.getValue().geo().getY()).isCloseTo(40.8518, within(1e-6));
         assertThat(toSave.getValue().geo().getX()).isCloseTo(14.2681, within(1e-6));
@@ -167,6 +182,11 @@ class ListingCreationServiceTest {
                 null,
                 null,
                 "A2",
+                null,
+                null,
+                null,
+                null,
+                null,
                 "Via",
                 "City",
                 null,
@@ -204,6 +224,11 @@ class ListingCreationServiceTest {
                 null,
                 null,
                 "A2",
+                null,
+                null,
+                null,
+                null,
+                null,
                 "Via",
                 "City",
                 null,
@@ -229,6 +254,11 @@ class ListingCreationServiceTest {
                 null,
                 null,
                 "A2",
+                null,
+                null,
+                null,
+                null,
+                null,
                 "Via",
                 "City",
                 null,
@@ -254,6 +284,11 @@ class ListingCreationServiceTest {
                 BigDecimal.valueOf(45),
                 2,
                 1,
+                null,
+                null,
+                null,
+                null,
+                null,
                 null,
                 "Via Roma 10",
                 "Napoli",
@@ -283,6 +318,11 @@ class ListingCreationServiceTest {
                 2,
                 1,
                 "Z",
+                null,
+                null,
+                null,
+                null,
+                null,
                 "Via Roma 10",
                 "Napoli",
                 "80100",
@@ -298,6 +338,72 @@ class ListingCreationServiceTest {
                     assertThat(error.field()).isEqualTo("energyClass");
                     assertThat(error.message()).contains("Valori ammessi");
                 });
+    }
+
+    @Test
+    void createListingForUser_rejectsNegativeSecurityDeposit() {
+        var agent = new Agent(agentId, userId, agencyId, "REA123", null, OffsetDateTime.now(), OffsetDateTime.now());
+        when(agentRepository.findByUserId(userId)).thenReturn(Optional.of(agent));
+
+        var command = new ListingCreationService.CreateListingCommand(
+                "Bilocale",
+                "Descrizione",
+                "SALE",
+                100_000L,
+                null,
+                null,
+                null,
+                "A2",
+                null,
+                -100L,
+                null,
+                null,
+                null,
+                "Via Roma 10",
+                "Napoli",
+                "80100",
+                41.0,
+                12.5,
+                false,
+                List.of()
+        );
+
+        var exception = assertThrows(BadRequestException.class, () -> listingCreationService.createListingForUser(userId, command));
+        assertThat(exception.fieldErrors())
+                .anySatisfy(error -> assertThat(error.field()).isEqualTo("securityDepositCents"));
+    }
+
+    @Test
+    void createListingForUser_rejectsNegativeCondoFee() {
+        var agent = new Agent(agentId, userId, agencyId, "REA123", null, OffsetDateTime.now(), OffsetDateTime.now());
+        when(agentRepository.findByUserId(userId)).thenReturn(Optional.of(agent));
+
+        var command = new ListingCreationService.CreateListingCommand(
+                "Bilocale",
+                "Descrizione",
+                "SALE",
+                100_000L,
+                null,
+                null,
+                null,
+                "A2",
+                null,
+                null,
+                null,
+                -500L,
+                null,
+                "Via Roma 10",
+                "Napoli",
+                "80100",
+                41.0,
+                12.5,
+                false,
+                List.of()
+        );
+
+        var exception = assertThrows(BadRequestException.class, () -> listingCreationService.createListingForUser(userId, command));
+        assertThat(exception.fieldErrors())
+                .anySatisfy(error -> assertThat(error.field()).isEqualTo("condoFeeCents"));
     }
 
     @Test
@@ -321,6 +427,11 @@ class ListingCreationServiceTest {
                 3,
                 1,
                 "B",
+                null,
+                0L,
+                false,
+                0L,
+                false,
                 "Via Roma",
                 "Roma",
                 "00100",
@@ -382,6 +493,11 @@ class ListingCreationServiceTest {
                 3,
                 1,
                 "B",
+                null,
+                0L,
+                false,
+                0L,
+                false,
                 "Via Roma",
                 "Roma",
                 "00100",
@@ -454,6 +570,11 @@ class ListingCreationServiceTest {
                 3,
                 1,
                 "B",
+                null,
+                0L,
+                false,
+                0L,
+                false,
                 "Via Roma",
                 "Roma",
                 "00100",
@@ -504,6 +625,11 @@ class ListingCreationServiceTest {
                 3,
                 1,
                 "B",
+                null,
+                0L,
+                false,
+                0L,
+                false,
                 "Via Roma",
                 "Roma",
                 "00100",
@@ -549,6 +675,11 @@ class ListingCreationServiceTest {
                 null,
                 null,
                 "A2",
+                null,
+                null,
+                null,
+                null,
+                null,
                 "Via",
                 "City",
                 null,
@@ -575,6 +706,11 @@ class ListingCreationServiceTest {
                 null,
                 null,
                 "A2",
+                null,
+                null,
+                null,
+                null,
+                null,
                 "Via",
                 "City",
                 null,
@@ -607,6 +743,11 @@ class ListingCreationServiceTest {
                 3,
                 1,
                 "B",
+                null,
+                0L,
+                false,
+                0L,
+                false,
                 "Via Vecchia",
                 "Pisa",
                 "56100",
@@ -644,6 +785,11 @@ class ListingCreationServiceTest {
                 4,
                 2,
                 "A2",
+                "Nuovo contratto",
+                200000L,
+                false,
+                8000L,
+                true,
                 "Via Nuova",
                 "Firenze",
                 "50100",
@@ -661,6 +807,10 @@ class ListingCreationServiceTest {
         assertThat(persisted.title()).isEqualTo("Nuovo Titolo");
         assertThat(persisted.addressLine()).isEqualTo("Via Nuova");
         assertThat(persisted.ownerAgentId()).isEqualTo(listingOwnerAgentId);
+        assertThat(persisted.contractDescription()).isEqualTo("Nuovo contratto");
+        assertThat(persisted.securityDepositCents()).isEqualTo(200000L);
+        assertThat(persisted.condoFeeCents()).isEqualTo(8000L);
+        assertThat(persisted.petsAllowed()).isTrue();
     }
 
     @Test
@@ -681,6 +831,11 @@ class ListingCreationServiceTest {
                 3,
                 1,
                 "B",
+                null,
+                0L,
+                false,
+                0L,
+                false,
                 "Via Roma",
                 "Roma",
                 "00100",
@@ -721,6 +876,11 @@ class ListingCreationServiceTest {
                 null,
                 null,
                 null,
+                null,
+                null,
+                null,
+                null,
+                null,
                 null
         );
 
@@ -745,6 +905,11 @@ class ListingCreationServiceTest {
                 3,
                 1,
                 "B",
+                null,
+                0L,
+                false,
+                0L,
+                false,
                 "Via Roma",
                 "Roma",
                 "00100",
@@ -780,6 +945,85 @@ class ListingCreationServiceTest {
                 null,
                 null,
                 "   ",
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+        );
+
+        assertThrows(BadRequestException.class, () -> listingCreationService.updateListingForUser(userId, listingId, command));
+    }
+
+    @Test
+    void updateListingForUser_rejectsNegativeSecurityDeposit() {
+        var listingId = UUID.randomUUID();
+        var agentRoleId = UUID.randomUUID();
+        var listing = new Listing(
+                listingId,
+                agencyId,
+                agentId,
+                typeId,
+                statusId,
+                "Titolo",
+                "Descrizione",
+                100_000L,
+                "EUR",
+                BigDecimal.valueOf(70),
+                3,
+                1,
+                "B",
+                null,
+                0L,
+                false,
+                0L,
+                false,
+                "Via Roma",
+                "Roma",
+                "00100",
+                null,
+                null,
+                null,
+                OffsetDateTime.now().minusDays(10),
+                OffsetDateTime.now().minusDays(20),
+                OffsetDateTime.now().minusDays(10)
+        );
+
+        when(userRepository.findById(userId)).thenReturn(Optional.of(new User(
+                userId,
+                "Agent",
+                "agent@example.com",
+                true,
+                agentRoleId,
+                null,
+                null,
+                OffsetDateTime.now(),
+                OffsetDateTime.now()
+        )));
+        when(roleRepository.findById(agentRoleId)).thenReturn(Optional.of(new Role(agentRoleId, RolesEnum.AGENT.name(), "Agent", "Agente")));
+        var agent = new Agent(agentId, userId, agencyId, "REA123", null, OffsetDateTime.now(), OffsetDateTime.now());
+        when(agentRepository.findByUserId(userId)).thenReturn(Optional.of(agent));
+        when(listingRepository.findById(listingId)).thenReturn(Optional.of(listing));
+
+        var command = new ListingCreationService.UpdateListingCommand(
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                -1L,
+                null,
+                null,
+                null,
                 null,
                 null,
                 null,

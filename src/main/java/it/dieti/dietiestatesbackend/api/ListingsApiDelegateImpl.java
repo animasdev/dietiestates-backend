@@ -147,6 +147,12 @@ public class ListingsApiDelegateImpl implements ListingsApiDelegate {
         Long priceCents = listingCreate.getPriceCents() != null
                 ? listingCreate.getPriceCents().longValue()
                 : null;
+        Long securityDepositCents = listingCreate.getSecurityDepositCents() != null
+                ? listingCreate.getSecurityDepositCents().longValue()
+                : null;
+        Long condoFeeCents = listingCreate.getCondoFeeCents() != null
+                ? listingCreate.getCondoFeeCents().longValue()
+                : null;
 
         var userId = UUID.fromString(jwtAuth.getToken().getSubject());
 
@@ -160,6 +166,11 @@ public class ListingsApiDelegateImpl implements ListingsApiDelegate {
                 listingCreate.getRooms(),
                 listingCreate.getFloor(),
                 listingCreate.getEnergyClass().getValue(),
+                listingCreate.getContractDescription(),
+                securityDepositCents,
+                listingCreate.getFurnished(),
+                condoFeeCents,
+                listingCreate.getPetsAllowed(),
                 listingCreate.getAddress(),
                 listingCreate.getCity(),
                 listingCreate.getPostalCode(),
@@ -220,6 +231,12 @@ public class ListingsApiDelegateImpl implements ListingsApiDelegate {
         Double latitude = geo != null ? Double.valueOf(geo.getLat()) : null;
         Double longitude = geo != null ? Double.valueOf(geo.getLng()) : null;
         var featureCodes = listingUpdate.getFeatures() != null ? List.copyOf(listingUpdate.getFeatures()) : null;
+        Long securityDepositCents = listingUpdate.getSecurityDepositCents() != null
+                ? listingUpdate.getSecurityDepositCents().longValue()
+                : null;
+        Long condoFeeCents = listingUpdate.getCondoFeeCents() != null
+                ? listingUpdate.getCondoFeeCents().longValue()
+                : null;
 
         var command = new ListingCreationService.UpdateListingCommand(
                 listingUpdate.getTitle(),
@@ -229,6 +246,11 @@ public class ListingsApiDelegateImpl implements ListingsApiDelegate {
                 listingUpdate.getRooms(),
                 listingUpdate.getFloor(),
                 listingUpdate.getEnergyClass().getValue(),
+                listingUpdate.getContractDescription(),
+                securityDepositCents,
+                listingUpdate.getFurnished(),
+                condoFeeCents,
+                listingUpdate.getPetsAllowed(),
                 listingUpdate.getAddress(),
                 listingUpdate.getCity(),
                 listingUpdate.getPostalCode(),
@@ -303,6 +325,11 @@ public class ListingsApiDelegateImpl implements ListingsApiDelegate {
         body.setSizeSqm(listing.sizeSqm() != null ? listing.sizeSqm().floatValue() : null);
         body.setFloor(listing.floor());
         body.setEnergyClass(Listing.EnergyClassEnum.valueOf(listing.energyClass()));
+        body.setContractDescription(listing.contractDescription());
+        body.setSecurityDepositCents(listing.securityDepositCents());
+        body.setFurnished(listing.furnished());
+        body.setCondoFeeCents(listing.condoFeeCents());
+        body.setPetsAllowed(listing.petsAllowed());
         body.setFeatures(features);
         body.setGeo(toGeo(listing.geo()));
         body.setPhotos(photos);
