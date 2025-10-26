@@ -31,7 +31,7 @@ public class AuthService {
     private final JwtEncoder jwtEncoder;
     private final it.dieti.dietiestatesbackend.config.JwtConfig jwtConfig;
     private final it.dieti.dietiestatesbackend.config.SecurityPasswordProperties passwordProps;
-    private final NotificationService notificationService = new NotificationService();
+    private final NotificationService notificationService;
 
     private static final long SIGNUP_TOKEN_TTL_MINUTES = 30; // can become configurable later
 
@@ -41,7 +41,7 @@ public class AuthService {
                        PasswordEncoder passwordEncoder,
                        JwtEncoder jwtEncoder,
                        it.dieti.dietiestatesbackend.config.JwtConfig jwtConfig,
-                       it.dieti.dietiestatesbackend.config.SecurityPasswordProperties passwordProps) {
+                       it.dieti.dietiestatesbackend.config.SecurityPasswordProperties passwordProps, NotificationService notificationService) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.signUpTokenRepository = signUpTokenRepository;
@@ -49,6 +49,7 @@ public class AuthService {
         this.jwtEncoder = jwtEncoder;
         this.jwtConfig = jwtConfig;
         this.passwordProps = passwordProps;
+        this.notificationService = notificationService;
     }
 
     public record AuthLoginResult(String accessToken, boolean firstAccess) {}

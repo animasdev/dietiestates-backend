@@ -13,6 +13,17 @@ spring:
     open-in-view: false
   flyway:
     enabled: true
+  mail:
+    host: ${MAIL_HOST:pro.eu.turbo-smtp.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
 
 server:
   port: 8080
@@ -35,6 +46,10 @@ app:
     bcrypt:
       # BCrypt strength (cost). 10..12 commonly used; higher is slower but stronger
       strength: 10
+  notification:
+    enabled: ${MAIL_ENABLED:false}
+    fromEmail: ${MAIL_FROM:noreply@dietiestates.it}
+    fromName: ${MAIL_FROM_NAME:DietiEstates}
 
 # Configurazione Supabase Storage (solo file storage in locale)
 # Per Supabase local, la CLI stampa le chiavi e le porte all'avvio.

@@ -23,16 +23,17 @@ public class PasswordResetService {
     private final PasswordResetTokenRepository tokenRepository;
     private final PasswordEncoder passwordEncoder;
     private final SecurityPasswordProperties passwordProps;
-    private final NotificationService notificationService = new NotificationService();
+    private final NotificationService notificationService;
 
     public PasswordResetService(UserRepository userRepository,
                                 PasswordResetTokenRepository tokenRepository,
                                 PasswordEncoder passwordEncoder,
-                                SecurityPasswordProperties passwordProps) {
+                                SecurityPasswordProperties passwordProps, NotificationService notificationService) {
         this.userRepository = userRepository;
         this.tokenRepository = tokenRepository;
         this.passwordEncoder = passwordEncoder;
         this.passwordProps = passwordProps;
+        this.notificationService = notificationService;
     }
 
     @Transactional
