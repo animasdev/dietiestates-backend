@@ -59,7 +59,7 @@ public class ListingEntity {
     @Column
     private Integer floor;
 
-    @Column(name = "energy_class")
+    @Column(name = "energy_class", nullable = false)
     private String energyClass;
 
     @Column(name = "address_line", nullable = false)

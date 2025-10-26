@@ -128,7 +128,7 @@ class ListingCreationServiceTest {
                 BigDecimal.valueOf(95.5),
                 4,
                 2,
-                "A",
+                "A2",
                 "Via Roma 10",
                 "Napoli",
                 "80100",
@@ -166,7 +166,7 @@ class ListingCreationServiceTest {
                 null,
                 null,
                 null,
-                null,
+                "A2",
                 "Via",
                 "City",
                 null,
@@ -203,7 +203,7 @@ class ListingCreationServiceTest {
                 null,
                 null,
                 null,
-                null,
+                "A2",
                 "Via",
                 "City",
                 null,
@@ -228,7 +228,7 @@ class ListingCreationServiceTest {
                 null,
                 null,
                 null,
-                null,
+                "A2",
                 "Via",
                 "City",
                 null,
@@ -239,6 +239,65 @@ class ListingCreationServiceTest {
         );
 
         assertThrows(PriceValidationException.class, () -> listingCreationService.createListingForUser(userId, command));
+    }
+
+    @Test
+    void createListingForUser_requiresEnergyClass() {
+        var agent = new Agent(agentId, userId, agencyId, "REA123", null, OffsetDateTime.now(), OffsetDateTime.now());
+        when(agentRepository.findByUserId(userId)).thenReturn(Optional.of(agent));
+
+        var command = new ListingCreationService.CreateListingCommand(
+                "Monolocale",
+                "Descrizione",
+                "SALE",
+                100_000L,
+                BigDecimal.valueOf(45),
+                2,
+                1,
+                null,
+                "Via Roma 10",
+                "Napoli",
+                "80100",
+                41.0,
+                12.5,
+                false,
+                List.of()
+        );
+
+        var exception = assertThrows(BadRequestException.class, () -> listingCreationService.createListingForUser(userId, command));
+        assertThat(exception.fieldErrors())
+                .anySatisfy(error -> assertThat(error.field()).isEqualTo("energyClass"));
+    }
+
+    @Test
+    void createListingForUser_rejectsUnsupportedEnergyClass() {
+        var agent = new Agent(agentId, userId, agencyId, "REA123", null, OffsetDateTime.now(), OffsetDateTime.now());
+        when(agentRepository.findByUserId(userId)).thenReturn(Optional.of(agent));
+
+        var command = new ListingCreationService.CreateListingCommand(
+                "Monolocale",
+                "Descrizione",
+                "SALE",
+                100_000L,
+                BigDecimal.valueOf(45),
+                2,
+                1,
+                "Z",
+                "Via Roma 10",
+                "Napoli",
+                "80100",
+                41.0,
+                12.5,
+                false,
+                List.of()
+        );
+
+        var exception = assertThrows(BadRequestException.class, () -> listingCreationService.createListingForUser(userId, command));
+        assertThat(exception.fieldErrors())
+                .anySatisfy(error -> {
+                    assertThat(error.field()).isEqualTo("energyClass");
+                    assertThat(error.message()).contains("Valori ammessi");
+                });
     }
 
     @Test
@@ -489,7 +548,7 @@ class ListingCreationServiceTest {
                 null,
                 null,
                 null,
-                null,
+                "A2",
                 "Via",
                 "City",
                 null,
@@ -515,7 +574,7 @@ class ListingCreationServiceTest {
                 null,
                 null,
                 null,
-                null,
+                "A2",
                 "Via",
                 "City",
                 null,
@@ -584,7 +643,7 @@ class ListingCreationServiceTest {
                 BigDecimal.valueOf(90),
                 4,
                 2,
-                "A",
+                "A2",
                 "Via Nuova",
                 "Firenze",
                 "50100",
@@ -602,6 +661,134 @@ class ListingCreationServiceTest {
         assertThat(persisted.title()).isEqualTo("Nuovo Titolo");
         assertThat(persisted.addressLine()).isEqualTo("Via Nuova");
         assertThat(persisted.ownerAgentId()).isEqualTo(listingOwnerAgentId);
+    }
+
+    @Test
+    void updateListingForUser_rejectsUnsupportedEnergyClass() {
+        var listingId = UUID.randomUUID();
+        var agentRoleId = UUID.randomUUID();
+        var listing = new Listing(
+                listingId,
+                agencyId,
+                agentId,
+                typeId,
+                statusId,
+                "Titolo",
+                "Descrizione",
+                100_000L,
+                "EUR",
+                BigDecimal.valueOf(70),
+                3,
+                1,
+                "B",
+                "Via Roma",
+                "Roma",
+                "00100",
+                null,
+                null,
+                null,
+                OffsetDateTime.now().minusDays(10),
+                OffsetDateTime.now().minusDays(20),
+                OffsetDateTime.now().minusDays(10)
+        );
+
+        when(userRepository.findById(userId)).thenReturn(Optional.of(new User(
+                userId,
+                "Agent",
+                "agent@example.com",
+                true,
+                agentRoleId,
+                null,
+                null,
+                OffsetDateTime.now(),
+                OffsetDateTime.now()
+        )));
+        when(roleRepository.findById(agentRoleId)).thenReturn(Optional.of(new Role(agentRoleId, RolesEnum.AGENT.name(), "Agent", "Agente")));
+        var agent = new Agent(agentId, userId, agencyId, "REA123", null, OffsetDateTime.now(), OffsetDateTime.now());
+        when(agentRepository.findByUserId(userId)).thenReturn(Optional.of(agent));
+        when(listingRepository.findById(listingId)).thenReturn(Optional.of(listing));
+
+        var command = new ListingCreationService.UpdateListingCommand(
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                "Z",
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+        );
+
+        assertThrows(BadRequestException.class, () -> listingCreationService.updateListingForUser(userId, listingId, command));
+    }
+
+    @Test
+    void updateListingForUser_rejectsBlankEnergyClass() {
+        var listingId = UUID.randomUUID();
+        var agentRoleId = UUID.randomUUID();
+        var listing = new Listing(
+                listingId,
+                agencyId,
+                agentId,
+                typeId,
+                statusId,
+                "Titolo",
+                "Descrizione",
+                100_000L,
+                "EUR",
+                BigDecimal.valueOf(70),
+                3,
+                1,
+                "B",
+                "Via Roma",
+                "Roma",
+                "00100",
+                null,
+                null,
+                null,
+                OffsetDateTime.now().minusDays(10),
+                OffsetDateTime.now().minusDays(20),
+                OffsetDateTime.now().minusDays(10)
+        );
+
+        when(userRepository.findById(userId)).thenReturn(Optional.of(new User(
+                userId,
+                "Agent",
+                "agent@example.com",
+                true,
+                agentRoleId,
+                null,
+                null,
+                OffsetDateTime.now(),
+                OffsetDateTime.now()
+        )));
+        when(roleRepository.findById(agentRoleId)).thenReturn(Optional.of(new Role(agentRoleId, RolesEnum.AGENT.name(), "Agent", "Agente")));
+        var agent = new Agent(agentId, userId, agencyId, "REA123", null, OffsetDateTime.now(), OffsetDateTime.now());
+        when(agentRepository.findByUserId(userId)).thenReturn(Optional.of(agent));
+        when(listingRepository.findById(listingId)).thenReturn(Optional.of(listing));
+
+        var command = new ListingCreationService.UpdateListingCommand(
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                "   ",
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+        );
+
+        assertThrows(BadRequestException.class, () -> listingCreationService.updateListingForUser(userId, listingId, command));
     }
 
     private void mockAgentWithBasics() {

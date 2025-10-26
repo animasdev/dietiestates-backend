@@ -39,6 +39,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -47,6 +48,11 @@ public class ListingCreationService {
     private static final String DEFAULT_CURRENCY = "EUR";
     private static final String DRAFT_STATUS_CODE = ListingStatusesEnum.DRAFT.getDescription();
     private static final String PUBLISHED_STATUS_CODE = ListingStatusesEnum.PUBLISHED.getDescription();
+    private static final List<String> SUPPORTED_ENERGY_CLASSES_ORDERED = List.of("A4", "A3", "A2", "A1", "B", "C", "D", "E", "F", "G");
+    private static final Set<String> SUPPORTED_ENERGY_CLASSES = Set.copyOf(SUPPORTED_ENERGY_CLASSES_ORDERED);
+    private static final String ENERGY_CLASS_FIELD = "energyClass";
+    private static final String ENERGY_CLASS_REQUIRED_MESSAGE = "Il campo '"+ENERGY_CLASS_FIELD+"' è obbligatorio.";
+    private static final String ENERGY_CLASS_INVALID_MESSAGE = "Valore non valido per 'energyClass'. Valori ammessi: " + String.join(", ", SUPPORTED_ENERGY_CLASSES_ORDERED) + ".";
 
     private final ListingRepository listingRepository;
     private final ListingTypeRepository listingTypeRepository;
@@ -137,6 +143,8 @@ public class ListingCreationService {
         var description = normalize(command.description());
         var addressLine = normalize(command.addressLine());
         var city = normalize(command.city());
+        var energyClassRaw = normalize(command.energyClass());
+        String normalizedEnergyClass = null;
         List<ApplicationHttpException.FieldErrorDetail> fieldErrors = new ArrayList<>();
         if (title.isBlank()) {
             fieldErrors.add(new ApplicationHttpException.FieldErrorDetail("title", "Il campo 'title' è obbligatorio."));
@@ -149,6 +157,16 @@ public class ListingCreationService {
         }
         if (city.isBlank()) {
             fieldErrors.add(new ApplicationHttpException.FieldErrorDetail("city", "Il campo 'city' è obbligatorio."));
+        }
+        if (energyClassRaw.isBlank()) {
+            fieldErrors.add(new ApplicationHttpException.FieldErrorDetail(ENERGY_CLASS_FIELD, ENERGY_CLASS_REQUIRED_MESSAGE));
+        } else {
+            var candidate = energyClassRaw.toUpperCase(Locale.ROOT);
+            if (!SUPPORTED_ENERGY_CLASSES.contains(candidate)) {
+                fieldErrors.add(new ApplicationHttpException.FieldErrorDetail(ENERGY_CLASS_FIELD, ENERGY_CLASS_INVALID_MESSAGE));
+            } else {
+                normalizedEnergyClass = candidate;
+            }
         }
         if (!fieldErrors.isEmpty()) {
             log.warn("Richiesta listing non valida per user {}: campi mancanti", userId);
@@ -189,7 +207,7 @@ public class ListingCreationService {
                 command.sizeSqm(),
                 command.rooms(),
                 command.floor(),
-                normalizeOptional(command.energyClass()),
+                normalizedEnergyClass,
                 addressLine,
                 city,
                 normalizeOptional(command.postalCode()),
@@ -365,7 +383,7 @@ public class ListingCreationService {
         var sizeSqm = command.sizeSqm() != null ? command.sizeSqm() : listing.sizeSqm();
         var rooms = command.rooms() != null ? command.rooms() : listing.rooms();
         var floor = command.floor() != null ? command.floor() : listing.floor();
-        var energyClass = command.energyClass() != null ? normalizeOptional(command.energyClass()) : listing.energyClass();
+        var energyClass = resolveUpdatedEnergyClass(command.energyClass(), listing.energyClass());
         var postalCode = command.postalCode() != null ? normalizeOptional(command.postalCode()) : listing.postalCode();
         var geo = resolveUpdatedGeo(listing.geo(), command.latitude(), command.longitude());
 
@@ -474,6 +492,21 @@ public class ListingCreationService {
 
     private String normalize(String value) {
         return value == null ? "" : value.trim();
+    }
+
+    private String resolveUpdatedEnergyClass(String requestedEnergyClass, String currentEnergyClass) {
+        if (requestedEnergyClass == null) {
+            return currentEnergyClass;
+        }
+        var normalized = normalize(requestedEnergyClass);
+        if (normalized.isEmpty()) {
+            throw BadRequestException.forField(ENERGY_CLASS_FIELD, ENERGY_CLASS_REQUIRED_MESSAGE);
+        }
+        var candidate = normalized.toUpperCase(Locale.ROOT);
+        if (!SUPPORTED_ENERGY_CLASSES.contains(candidate)) {
+            throw BadRequestException.forField(ENERGY_CLASS_FIELD, ENERGY_CLASS_INVALID_MESSAGE);
+        }
+        return candidate;
     }
 
     private String normalizeOptional(String value) {

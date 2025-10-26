@@ -57,7 +57,7 @@ public class ApiExceptionHandler {
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ApiErrorResponse> handleHttpMessageNotReadable(HttpMessageNotReadableException ex) {
         log.warn("Payload non leggibile o mancante", ex);
-        var response = ApiErrorResponse.of(HttpStatus.BAD_REQUEST, "Payload non leggibile o mancante.", null);
+        var response = ApiErrorResponse.of(HttpStatus.BAD_REQUEST, "Payload non leggibile, mancante o non conforme alle specifiche.", null);
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }
 

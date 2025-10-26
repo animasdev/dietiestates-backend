@@ -86,7 +86,10 @@ components:
         rooms: { type: integer, nullable: true }
         sizeSqm: { type: number, format: float, nullable: true }
         floor: { type: integer, nullable: true }
-        energyClass: { type: string, nullable: true }
+        energyClass:
+          type: string
+          nullable: true
+          enum: [A4, A3, A2, A1, B, C, D, E, F, G]
         features:
           type: array
           items: { type: string }
@@ -102,7 +105,7 @@ components:
         updatedAt: { type: string, format: date-time }
     ListingCreate:
       type: object
-      required: [title, listingType, description]
+      required: [title, listingType, description, energyClass]
       properties:
         title: { type: string }
         description: { type: string }
@@ -115,7 +118,9 @@ components:
         rooms: { type: integer }
         sizeSqm: { type: number, format: float }
         floor: { type: integer }
-        energyClass: { type: string }
+        energyClass:
+          type: string
+          enum: [A4, A3, A2, A1, B, C, D, E, F, G]
         features:
           type: array
           items: { type: string }
@@ -135,7 +140,9 @@ components:
         sizeSqm: { type: number, format: float }
         rooms: { type: integer }
         floor: { type: integer }
-        energyClass: { type: string }
+        energyClass:
+          type: string
+          enum: [A4, A3, A2, A1, B, C, D, E, F, G]
         address: { type: string }
         city: { type: string }
         postalCode: { type: string }

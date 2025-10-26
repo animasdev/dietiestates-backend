@@ -138,6 +138,7 @@ public class ListingsApiDelegateImpl implements ListingsApiDelegate {
 
         requireField(listingCreate.getListingType(), "listingType");
         requireField(listingCreate.getGeo(), "geo");
+        requireField(listingCreate.getEnergyClass(), "energyClass");
 
         var geo = listingCreate.getGeo();
         requireField(geo.getLat(), "geo.lat");
@@ -158,7 +159,7 @@ public class ListingsApiDelegateImpl implements ListingsApiDelegate {
                 listingCreate.getSizeSqm() != null ? BigDecimal.valueOf(listingCreate.getSizeSqm()) : null,
                 listingCreate.getRooms(),
                 listingCreate.getFloor(),
-                listingCreate.getEnergyClass(),
+                listingCreate.getEnergyClass().getValue(),
                 listingCreate.getAddress(),
                 listingCreate.getCity(),
                 listingCreate.getPostalCode(),
@@ -227,7 +228,7 @@ public class ListingsApiDelegateImpl implements ListingsApiDelegate {
                 sizeSqm,
                 listingUpdate.getRooms(),
                 listingUpdate.getFloor(),
-                listingUpdate.getEnergyClass(),
+                listingUpdate.getEnergyClass().getValue(),
                 listingUpdate.getAddress(),
                 listingUpdate.getCity(),
                 listingUpdate.getPostalCode(),
@@ -301,7 +302,7 @@ public class ListingsApiDelegateImpl implements ListingsApiDelegate {
         body.setRooms(listing.rooms());
         body.setSizeSqm(listing.sizeSqm() != null ? listing.sizeSqm().floatValue() : null);
         body.setFloor(listing.floor());
-        body.setEnergyClass(listing.energyClass());
+        body.setEnergyClass(Listing.EnergyClassEnum.valueOf(listing.energyClass()));
         body.setFeatures(features);
         body.setGeo(toGeo(listing.geo()));
         body.setPhotos(photos);
