@@ -16,6 +16,7 @@ import it.dieti.dietiestatesbackend.domain.listing.status.ListingStatusRepositor
 import it.dieti.dietiestatesbackend.domain.listing.status.ListingStatusesEnum;
 import it.dieti.dietiestatesbackend.application.feature.FeatureService;
 import it.dieti.dietiestatesbackend.application.notification.NotificationService;
+import it.dieti.dietiestatesbackend.application.moderation.ModerationService;
 import it.dieti.dietiestatesbackend.domain.user.User;
 import it.dieti.dietiestatesbackend.domain.user.UserRepository;
 import it.dieti.dietiestatesbackend.domain.user.role.Role;
@@ -63,6 +64,8 @@ class ListingCreationServiceTest {
     private FeatureService featureService;
     @Mock
     private NotificationService notificationService;
+    @Mock
+    private ModerationService moderationService;
 
     @InjectMocks
     private ListingCreationService listingCreationService;
@@ -469,6 +472,7 @@ class ListingCreationServiceTest {
         assertThat(result.statusId()).isEqualTo(pendingStatusId);
         assertThat(result.pendingDeleteUntil()).isNotNull();
         assertThat(result.pendingDeleteUntil()).isCloseTo(now.plusHours(24), within(1, ChronoUnit.MINUTES));
+        verify(moderationService).recordListingDeletion(listingId, userId, RolesEnum.AGENT, null);
         verify(notificationService).sendDeleteListing("agent@example.com", "Titolo", listingId, null);
     }
 
@@ -547,6 +551,7 @@ class ListingCreationServiceTest {
 
         assertThat(result.statusId()).isEqualTo(pendingStatusId);
         assertThat(result.pendingDeleteUntil()).isNotNull();
+        verify(moderationService).recordListingDeletion(listingId, userId, RolesEnum.ADMIN, reason);
         verify(notificationService).sendDeleteListing("owner@example.com", "Titolo", listingId, reason);
     }
 

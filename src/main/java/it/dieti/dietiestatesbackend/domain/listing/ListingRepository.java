@@ -9,4 +9,6 @@ public interface ListingRepository {
     Listing save(Listing listing);
     Optional<Listing> findById(UUID id);
     List<Listing> findPendingDeleteBefore(OffsetDateTime threshold);
+    List<Listing> findAllByOwnerAgentId(UUID ownerAgentId);
+    List<Listing> findAllByAgencyId(UUID agencyId);
 }

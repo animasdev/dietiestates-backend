@@ -5,6 +5,7 @@ import it.dieti.dietiestatesbackend.application.exception.BadRequestException;
 import it.dieti.dietiestatesbackend.application.exception.ForbiddenException;
 import it.dieti.dietiestatesbackend.application.exception.InternalServerErrorException;
 import it.dieti.dietiestatesbackend.application.exception.NotFoundException;
+import it.dieti.dietiestatesbackend.application.exception.UnauthorizedException;
 import it.dieti.dietiestatesbackend.application.exception.listing.AgentProfileRequiredException;
 import it.dieti.dietiestatesbackend.application.exception.listing.CoordinatesValidationException;
 import it.dieti.dietiestatesbackend.application.exception.listing.ListingStatusUnavailableException;
@@ -12,6 +13,7 @@ import it.dieti.dietiestatesbackend.application.exception.listing.ListingTypeNot
 import it.dieti.dietiestatesbackend.application.exception.listing.PriceValidationException;
 import it.dieti.dietiestatesbackend.application.feature.FeatureService;
 import it.dieti.dietiestatesbackend.application.notification.NotificationService;
+import it.dieti.dietiestatesbackend.application.moderation.ModerationService;
 import it.dieti.dietiestatesbackend.domain.agent.Agent;
 import it.dieti.dietiestatesbackend.domain.agent.AgentRepository;
 import it.dieti.dietiestatesbackend.domain.listing.Listing;
@@ -32,6 +34,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
@@ -64,6 +67,7 @@ public class ListingCreationService {
     private final RoleRepository roleRepository;
     private final FeatureService featureService;
     private final NotificationService notificationService;
+    private final ModerationService moderationService;
 
     private static final Logger log = LoggerFactory.getLogger(ListingCreationService.class);
     private static final String INTERNAL_ERROR_MESSAGE = "Si è verificato un errore interno. Riprova più tardi.";
@@ -76,7 +80,9 @@ public class ListingCreationService {
                                   AgentRepository agentRepository,
                                   UserRepository userRepository,
                                   RoleRepository roleRepository,
-                                  FeatureService featureService, NotificationService notificationService) {
+                                  FeatureService featureService,
+                                  NotificationService notificationService,
+                                  ModerationService moderationService) {
         this.listingRepository = listingRepository;
         this.listingTypeRepository = listingTypeRepository;
         this.listingStatusRepository = listingStatusRepository;
@@ -85,6 +91,7 @@ public class ListingCreationService {
         this.roleRepository = roleRepository;
         this.featureService = featureService;
         this.notificationService = notificationService;
+        this.moderationService = moderationService;
     }
 
     public record CreateListingCommand(
@@ -248,7 +255,19 @@ public class ListingCreationService {
 
         var listing = requireListing(listingId);
         var userRole = resolveUserRole(userId);
+        if (userRole == null) {
+            log.warn("User {} senza ruolo durante richiesta cancellazione annuncio {}", userId, listingId);
+            throw UnauthorizedException.userNotFound();
+        }
         boolean isPrivileged = userRole == RolesEnum.ADMIN || userRole == RolesEnum.SUPERADMIN;
+
+        var sanitizedReason = StringUtils.hasText(reason) ? reason.trim() : null;
+        if (sanitizedReason != null && sanitizedReason.length() > 500) {
+            throw BadRequestException.forField("reason", "Il campo 'reason' non può superare i 500 caratteri.");
+        }
+        if (isPrivileged && !StringUtils.hasText(sanitizedReason)) {
+            throw BadRequestException.forField("reason", "Il campo 'reason' è obbligatorio per gli amministratori.");
+        }
 
         Agent agent = null;
         if (!isPrivileged) {
@@ -319,12 +338,15 @@ public class ListingCreationService {
                 listing.createdAt(),
                 now
         );
+        var savedListing = listingRepository.save(updatedListing);
+        moderationService.recordListingDeletion(savedListing.id(), userId, userRole, sanitizedReason);
+
         if (isPrivileged) {
-            notificationService.sendDeleteListing(agentUser.email(),listing.title(),listingId,reason);
+            notificationService.sendDeleteListing(agentUser.email(), listing.title(), listingId, sanitizedReason);
         } else {
-            notificationService.sendDeleteListing(agentUser.email(),listing.title(),listingId,null);
+            notificationService.sendDeleteListing(agentUser.email(), listing.title(), listingId, null);
         }
-        return listingRepository.save(updatedListing);
+        return savedListing;
     }
 
     private Agent requireAgent(UUID userId) {

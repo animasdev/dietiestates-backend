@@ -79,6 +79,20 @@ public class ListingRepositoryJpaAdapter implements ListingRepository {
     }
 
     @Override
+    public List<Listing> findAllByOwnerAgentId(UUID ownerAgentId) {
+        return jpaRepository.findAllByOwnerAgent_Id(ownerAgentId).stream()
+                .map(ListingEntityMapper::toDomain)
+                .toList();
+    }
+
+    @Override
+    public List<Listing> findAllByAgencyId(UUID agencyId) {
+        return jpaRepository.findAllByAgency_Id(agencyId).stream()
+                .map(ListingEntityMapper::toDomain)
+                .toList();
+    }
+
+    @Override
     public List<Listing> findPendingDeleteBefore(OffsetDateTime threshold) {
         return jpaRepository
                 .findAllByStatus_CodeAndPendingDeleteUntilBefore(ListingStatusesEnum.PENDING_DELETE.getDescription(), threshold)

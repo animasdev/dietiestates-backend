@@ -8,4 +8,8 @@ import java.util.UUID;
 
 public interface ListingJpaRepository extends JpaRepository<ListingEntity, UUID> {
     List<ListingEntity> findAllByStatus_CodeAndPendingDeleteUntilBefore(String statusCode, OffsetDateTime threshold);
+
+    List<ListingEntity> findAllByOwnerAgent_Id(UUID ownerAgentId);
+
+    List<ListingEntity> findAllByAgency_Id(UUID agencyId);
 }

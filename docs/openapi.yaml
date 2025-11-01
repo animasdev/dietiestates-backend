@@ -18,6 +18,7 @@ tags:
   - name: Agencies
   - name: Agents
   - name: Media
+  - name: Moderation
 components:
   securitySchemes:
     bearerAuth:
@@ -181,7 +182,25 @@ components:
         reason:
           type: string
           maxLength: 500
-          description: Motivo opzionale della cancellazione (attualmente ignorato lato backend).
+          description: Motivo della cancellazione. Obbligatorio per amministratori, opzionale per gli altri ruoli.
+    ModerationAction:
+      type: object
+      required: [id, listingId, performedByUserId, performedByRole, actionType, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        listingId: { type: string, format: uuid }
+        performedByUserId: { type: string, format: uuid }
+        performedByRole:
+          type: string
+          enum: [SUPERADMIN, ADMIN, AGENCY, AGENT, USER]
+        actionType:
+          type: string
+          enum: [EDIT, DELETE, RESTORE]
+        reason:
+          type: string
+          maxLength: 500
+          nullable: true
+        createdAt: { type: string, format: date-time }
     UserInfo:
       type: object
       required: [displayName, email, role]
@@ -641,6 +660,38 @@ paths:
               schema: { $ref: '#/components/schemas/Listing' }
         '409':
           description: Window elapsed; cannot restore
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+
+  /moderation/listings:
+    get:
+      tags: [Moderation]
+      summary: Elenco azioni di moderazione sugli annunci
+      description: Restituisce le azioni di moderazione registrate per gli annunci accessibili all'utente autenticato.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: listingId
+          in: query
+          required: false
+          description: Filtra le azioni per uno specifico annuncio (deve essere accessibile all'utente).
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Azioni di moderazione trovate
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/ModerationAction' }
+        '401':
+          description: Autenticazione richiesta
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '403':
+          description: Accesso negato se l'utente non è autorizzato per l'annuncio richiesto
           content:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Problem' }
