@@ -2,6 +2,7 @@ package it.dieti.dietiestatesbackend.application.listing;
 
 import it.dieti.dietiestatesbackend.application.exception.ApplicationHttpException;
 import it.dieti.dietiestatesbackend.application.exception.BadRequestException;
+import it.dieti.dietiestatesbackend.application.exception.ConflictException;
 import it.dieti.dietiestatesbackend.application.exception.ForbiddenException;
 import it.dieti.dietiestatesbackend.application.exception.InternalServerErrorException;
 import it.dieti.dietiestatesbackend.application.exception.NotFoundException;
@@ -18,11 +19,12 @@ import it.dieti.dietiestatesbackend.domain.agent.Agent;
 import it.dieti.dietiestatesbackend.domain.agent.AgentRepository;
 import it.dieti.dietiestatesbackend.domain.listing.Listing;
 import it.dieti.dietiestatesbackend.domain.listing.ListingRepository;
-import it.dieti.dietiestatesbackend.domain.listing.ListingTypeRepository;
-import it.dieti.dietiestatesbackend.domain.listing.status.ListingStatusRepository;
 import it.dieti.dietiestatesbackend.domain.listing.ListingType;
+import it.dieti.dietiestatesbackend.domain.listing.ListingTypeRepository;
 import it.dieti.dietiestatesbackend.domain.listing.status.ListingStatus;
+import it.dieti.dietiestatesbackend.domain.listing.status.ListingStatusRepository;
 import it.dieti.dietiestatesbackend.domain.listing.status.ListingStatusesEnum;
+import it.dieti.dietiestatesbackend.domain.moderation.ModerationAction;
 import it.dieti.dietiestatesbackend.domain.user.UserRepository;
 import it.dieti.dietiestatesbackend.domain.user.role.RoleRepository;
 import it.dieti.dietiestatesbackend.domain.user.role.RolesEnum;
@@ -346,6 +348,97 @@ public class ListingCreationService {
         } else {
             notificationService.sendDeleteListing(agentUser.email(), listing.title(), listingId, null);
         }
+        return savedListing;
+    }
+
+    public Listing restoreListing(UUID userId, UUID listingId) {
+        Objects.requireNonNull(userId, USER_ID_REQUIRED_MESSAGE);
+        Objects.requireNonNull(listingId, LISTING_ID_REQUIRED_MESSAGE);
+
+        var listing = requireListing(listingId);
+        var userRole = resolveUserRole(userId);
+        if (userRole == null) {
+            log.warn("User {} senza ruolo durante ripristino annuncio {}", userId, listingId);
+            throw UnauthorizedException.userNotFound();
+        }
+
+        var pendingDeleteStatus = listingStatusRepository.findByCode(ListingStatusesEnum.PENDING_DELETE.getDescription())
+                .orElseThrow(() -> {
+                    log.error("Stato PENDING_DELETE non configurato durante ripristino");
+                    return new InternalServerErrorException(INTERNAL_ERROR_MESSAGE);
+                });
+        if (!pendingDeleteStatus.id().equals(listing.statusId())) {
+            log.warn("Tentativo di ripristinare annuncio {} non in stato PENDING_DELETE", listingId);
+            throw BadRequestException.of("L'annuncio non è contrassegnato per la cancellazione.");
+        }
+
+        if (listing.pendingDeleteUntil() == null) {
+            log.error("Annuncio {} in stato PENDING_DELETE senza pendingDeleteUntil", listingId);
+            throw ConflictException.of("La finestra di ripristino per l'annuncio è scaduta.");
+        }
+
+        var now = OffsetDateTime.now();
+        if (now.isAfter(listing.pendingDeleteUntil())) {
+            log.warn("Ripristino annuncio {} fallito: finestra scaduta", listingId);
+            throw ConflictException.of("La finestra di ripristino per l'annuncio è scaduta.");
+        }
+
+        ModerationAction latestDeletion = moderationService.findLatestDeletionAction(listingId)
+                .orElseThrow(() -> ConflictException.of("Nessuna cancellazione registrata per l'annuncio."));
+
+        boolean isPrivileged = userRole == RolesEnum.ADMIN || userRole == RolesEnum.SUPERADMIN;
+        if (!isPrivileged) {
+            var agent = requireAgent(userId);
+            ensureOwnership(agent, listing, listingId);
+
+            if (latestDeletion.performedByRole() == RolesEnum.ADMIN || latestDeletion.performedByRole() == RolesEnum.SUPERADMIN) {
+                log.warn("Agent {} ha tentato di ripristinare annuncio {} cancellato da admin", agent.id(), listingId);
+                throw ForbiddenException.of("Permesso negato: l'annuncio è stato cancellato da un amministratore.");
+            }
+            if (!userId.equals(latestDeletion.performedByUserId())) {
+                log.warn("Agent {} ha tentato di ripristinare annuncio {} cancellato da altro utente {}", agent.id(), listingId, latestDeletion.performedByUserId());
+                throw ForbiddenException.of("Permesso negato: puoi ripristinare solo gli annunci che hai cancellato tu.");
+            }
+        }
+
+        var publishedStatus = listingStatusRepository.findByCode(ListingStatusesEnum.PUBLISHED.getDescription())
+                .orElseThrow(() -> {
+                    log.error("Stato PUBLISHED non configurato durante ripristino");
+                    return new InternalServerErrorException(INTERNAL_ERROR_MESSAGE);
+                });
+
+        var restoredListing = new Listing(
+                listing.id(),
+                listing.agencyId(),
+                listing.ownerAgentId(),
+                listing.listingTypeId(),
+                publishedStatus.id(),
+                listing.title(),
+                listing.description(),
+                listing.priceCents(),
+                listing.currency(),
+                listing.sizeSqm(),
+                listing.rooms(),
+                listing.floor(),
+                listing.energyClass(),
+                listing.contractDescription(),
+                listing.securityDepositCents(),
+                listing.furnished(),
+                listing.condoFeeCents(),
+                listing.petsAllowed(),
+                listing.addressLine(),
+                listing.city(),
+                listing.postalCode(),
+                listing.geo(),
+                null,
+                listing.deletedAt(),
+                listing.publishedAt(),
+                listing.createdAt(),
+                now
+        );
+
+        var savedListing = listingRepository.save(restoredListing);
+        moderationService.recordListingRestoration(savedListing.id(), userId, userRole);
         return savedListing;
     }
 

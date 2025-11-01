@@ -280,6 +280,22 @@ public class ListingsApiDelegateImpl implements ListingsApiDelegate {
         return ResponseEntity.status(HttpStatus.OK).body(getFullListing(listing.id()));
     }
 
+    @Override
+    public ResponseEntity<Listing> listingsIdRestorePost(
+            @Parameter(name = "id", required = true, in = ParameterIn.PATH) UUID id
+    ) {
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        if (!(auth instanceof JwtAuthenticationToken jwtAuth)) {
+            log.warn("Accesso non autorizzato a listingsIdRestorePost: token mancante");
+            throw UnauthorizedException.bearerTokenMissing();
+        }
+
+        var userId = UUID.fromString(jwtAuth.getToken().getSubject());
+        var listing = listingCreationService.restoreListing(userId, id);
+        log.info("Listing {} ripristinato da user {}", id, userId);
+        return ResponseEntity.status(HttpStatus.OK).body(getFullListing(listing.id()));
+    }
+
     private Listing getFullListing(UUID id) {
         var listingDetails = listingCreationService.getListingDetails(id);
         var photos = listingMediaService.getListingPhotos(id);

@@ -19,6 +19,7 @@ import org.springframework.util.StringUtils;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -30,6 +31,7 @@ public class ModerationService {
             RolesEnum.AGENCY.name(),
             RolesEnum.AGENT.name()
     );
+    public static final String LISTING_ID_IS_REQUIRED = "listingId is required";
 
     private final ModerationActionRepository moderationActionRepository;
     private final ListingRepository listingRepository;
@@ -53,7 +55,7 @@ public class ModerationService {
     }
 
     public void recordListingDeletion(UUID listingId, UUID performedByUserId, RolesEnum performedByRole, String reason) {
-        Objects.requireNonNull(listingId, "listingId is required");
+        Objects.requireNonNull(listingId, LISTING_ID_IS_REQUIRED);
         Objects.requireNonNull(performedByUserId, "performedByUserId is required");
         Objects.requireNonNull(performedByRole, "performedByRole is required");
 
@@ -68,6 +70,30 @@ public class ModerationService {
                 OffsetDateTime.now()
         );
         moderationActionRepository.save(action);
+    }
+
+    public void recordListingRestoration(UUID listingId, UUID performedByUserId, RolesEnum performedByRole) {
+        Objects.requireNonNull(listingId, LISTING_ID_IS_REQUIRED);
+        Objects.requireNonNull(performedByUserId, "performedByUserId is required");
+        Objects.requireNonNull(performedByRole, "performedByRole is required");
+
+        var action = new ModerationAction(
+                null,
+                listingId,
+                performedByUserId,
+                performedByRole,
+                ModerationActionType.RESTORE,
+                null,
+                OffsetDateTime.now()
+        );
+        moderationActionRepository.save(action);
+    }
+
+    public Optional<ModerationAction> findLatestDeletionAction(UUID listingId) {
+        Objects.requireNonNull(listingId, LISTING_ID_IS_REQUIRED);
+        return moderationActionRepository.findByListingId(listingId).stream()
+                .filter(action -> action.actionType() == ModerationActionType.DELETE)
+                .findFirst();
     }
 
     public List<ModerationLogEntry> getModerationActions(UUID requesterUserId, UUID listingId) {
