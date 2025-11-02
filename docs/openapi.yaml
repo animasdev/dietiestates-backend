@@ -217,13 +217,21 @@ components:
       properties:
         name: { type: string }
         description: { type: string }
-        logoMediaId: { type: string, format: uuid, nullable: true }
+        logoUrl:
+          type: string
+          format: uri
+          nullable: true
+          description: URL pubblico del logo agenzia
     UserInfoAgentProfile:
       type: object
       properties:
         agencyId: { type: string, format: uuid }
         reaNumber: { type: string }
-        profilePhotoMediaId: { type: string, format: uuid, nullable: true }
+        profilePhotoUrl:
+          type: string
+          format: uri
+          nullable: true
+          description: URL pubblico della foto profilo agente
     AgencyCreateRequest:
       type: object
       required: [name, description]

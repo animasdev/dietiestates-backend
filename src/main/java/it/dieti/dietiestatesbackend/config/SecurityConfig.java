@@ -66,7 +66,8 @@ public class SecurityConfig {
                         "/swagger-ui/**",
                         "/actuator/health",
                         "/actuator/info",
-                        "/features"
+                        "/features",
+                        "/media/**"
                 ).permitAll()
                 .requestMatchers(HttpMethod.GET, "/listings").permitAll()
                 .anyRequest().authenticated()

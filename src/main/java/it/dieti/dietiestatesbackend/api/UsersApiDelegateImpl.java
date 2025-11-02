@@ -16,6 +16,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Service;
 
+import java.net.URI;
 import java.util.NoSuchElementException;
 import java.util.UUID;
 
@@ -79,7 +80,9 @@ public class UsersApiDelegateImpl implements UsersApiDelegate {
         UserInfoAgencyProfile api = new UserInfoAgencyProfile();
         api.setName(profile.name());
         api.setDescription(profile.description());
-        api.setLogoMediaId(profile.logoMediaId());
+        if (profile.logoUrl() != null && !profile.logoUrl().isBlank()) {
+            api.setLogoUrl(URI.create(profile.logoUrl()));
+        }
         return api;
     }
 
@@ -87,7 +90,9 @@ public class UsersApiDelegateImpl implements UsersApiDelegate {
         UserInfoAgentProfile api = new UserInfoAgentProfile();
         api.setAgencyId(profile.agencyId());
         api.setReaNumber(profile.reaNumber());
-        api.setProfilePhotoMediaId(profile.profilePhotoMediaId());
+        if (profile.profilePhotoUrl() != null && !profile.profilePhotoUrl().isBlank()) {
+            api.setProfilePhotoUrl(URI.create(profile.profilePhotoUrl()));
+        }
         return api;
     }
 }
