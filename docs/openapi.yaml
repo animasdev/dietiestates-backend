@@ -444,7 +444,18 @@ paths:
                 token: { type: string }
                 password: { type: string, format: password, minLength: 8 }
       responses:
-        '200': { description: Registration completed }
+        '200':
+          description: Registration completed
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status:
+                    type: string
+                    description: Confirmation outcome
+                    example: confirmed
         '400':
           description: Invalid or expired token
           content:

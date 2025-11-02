@@ -59,9 +59,10 @@ public class AuthApiDelegateImpl implements AuthApiDelegate {
     }
 
     @Override
-    public ResponseEntity<Void> authSignUpConfirmPost(AuthSignUpConfirmPostRequest request) {
+    public ResponseEntity<AuthSignUpConfirmPost200Response> authSignUpConfirmPost(AuthSignUpConfirmPostRequest request) {
         if (authService.confirmSignUp(request.getToken(), request.getPassword())) {
-            return ResponseEntity.ok().build();
+            var response = new AuthSignUpConfirmPost200Response().status("confirmed");
+            return ResponseEntity.ok(response);
         }
         log.warn("Conferma sign-up fallita per token {}", request.getToken());
         throw BadRequestException.of("Token di conferma non valido o scaduto.");
