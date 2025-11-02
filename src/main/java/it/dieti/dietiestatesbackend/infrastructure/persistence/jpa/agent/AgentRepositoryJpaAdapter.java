@@ -21,6 +21,11 @@ public class AgentRepositoryJpaAdapter implements AgentRepository {
     }
 
     @Override
+    public List<Agent> findAll() {
+        return jpaRepository.findAll().stream().map(this::toDomain).toList();
+    }
+
+    @Override
     public Optional<Agent> findById(UUID id) {
         return jpaRepository.findById(id).map(this::toDomain);
     }

@@ -26,6 +26,26 @@ public class UserRepositoryJpaAdapter implements UserRepository {
         return page.getContent().stream().map(this::toDomain).toList();
     }
 
+    @Override
+    public List<User> findByRoleCodes(java.util.Collection<String> roleCodes) {
+        if (roleCodes == null || roleCodes.isEmpty()) {
+            return List.of();
+        }
+        return jpaRepository.findByRole_CodeIn(roleCodes).stream()
+                .map(this::toDomain)
+                .toList();
+    }
+
+    @Override
+    public List<User> findByIds(java.util.Collection<UUID> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return List.of();
+        }
+        return jpaRepository.findAllById(ids).stream()
+                .map(this::toDomain)
+                .toList();
+    }
+
     private User toDomain(UserEntity e) {
         return new User(
                 e.getId(),

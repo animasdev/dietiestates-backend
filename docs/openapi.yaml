@@ -232,6 +232,82 @@ components:
           format: uri
           nullable: true
           description: URL pubblico della foto profilo agente
+    AdminSummary:
+      type: object
+      required: [id, displayName, email, role, firstAccess]
+      properties:
+        id: { type: string, format: uuid }
+        displayName: { type: string }
+        email: { type: string, format: email }
+        role: { type: string }
+        firstAccess: { type: boolean }
+        createdAt: { type: string, format: date-time, nullable: true }
+        updatedAt: { type: string, format: date-time, nullable: true }
+    AgencySummary:
+      type: object
+      required: [id, name, description, ownerUserId, ownerDisplayName, ownerEmail]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        description: { type: string }
+        ownerUserId: { type: string, format: uuid }
+        ownerDisplayName: { type: string }
+        ownerEmail: { type: string, format: email }
+        logoUrl: { type: string, format: uri, nullable: true }
+        approvedBy: { type: string, format: uuid, nullable: true }
+        approvedAt: { type: string, format: date-time, nullable: true }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    AgentSummary:
+      type: object
+      required: [id, userId, displayName, email, agencyId, agencyName, reaNumber]
+      properties:
+        id: { type: string, format: uuid }
+        userId: { type: string, format: uuid }
+        displayName: { type: string }
+        email: { type: string, format: email }
+        agencyId: { type: string, format: uuid }
+        agencyName: { type: string }
+        reaNumber: { type: string }
+        profilePhotoUrl: { type: string, format: uri, nullable: true }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    PageMetadata:
+      type: object
+      required: [page, size, totalElements, totalPages]
+      properties:
+        page: { type: integer, minimum: 0 }
+        size: { type: integer, minimum: 1 }
+        totalElements: { type: integer, minimum: 0 }
+        totalPages: { type: integer, minimum: 0 }
+        sort:
+          type: array
+          items: { type: string }
+          description: Lista dei criteri di ordinamento applicati (`campo,DIREZIONE`).
+    AdminSummaryPage:
+      type: object
+      required: [items, page]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/AdminSummary' }
+        page: { $ref: '#/components/schemas/PageMetadata' }
+    AgencySummaryPage:
+      type: object
+      required: [items, page]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/AgencySummary' }
+        page: { $ref: '#/components/schemas/PageMetadata' }
+    AgentSummaryPage:
+      type: object
+      required: [items, page]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/AgentSummary' }
+        page: { $ref: '#/components/schemas/PageMetadata' }
     AgencyCreateRequest:
       type: object
       required: [name, description]
@@ -813,6 +889,137 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/UserInfo' }
+  /users/admins:
+    get:
+      tags: [Users]
+      summary: Elenca tutti gli account amministrativi
+      description: Restituisce gli utenti con ruolo `SUPERADMIN` o `ADMIN`, includendo gli stati di first access.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, minimum: 0, default: 0 }
+          description: Numero pagina (0-based).
+        - name: size
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+          description: Numero di elementi per pagina.
+        - name: sort
+          in: query
+          schema:
+            type: array
+            items: { type: string }
+          style: form
+          explode: true
+          description: Criteri di ordinamento (`displayName,asc`, `email,desc`, `createdAt,desc`).
+        - name: search
+          in: query
+          schema: { type: string }
+          description: Filtro su nome visualizzato o email (case-insensitive).
+        - name: role
+          in: query
+          schema:
+            type: string
+            enum: [SUPERADMIN, ADMIN]
+          description: Limita il risultato a un singolo ruolo amministrativo.
+      responses:
+        '200':
+          description: Elenco di utenti amministratori
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminSummaryPage' }
+        '403':
+          description: Ruolo non autorizzato alla consultazione
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+
+  /users/agencies:
+    get:
+      tags: [Users]
+      summary: Elenca tutte le agenzie censite
+      description: Accessibile ad `ADMIN` e `SUPERADMIN`, riporta i dati principali dell'agenzia e del referente.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, minimum: 0, default: 0 }
+        - name: size
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+        - name: sort
+          in: query
+          schema:
+            type: array
+            items: { type: string }
+          style: form
+          explode: true
+          description: Criteri di ordinamento (`name,asc`, `createdAt,desc`, …).
+        - name: search
+          in: query
+          schema: { type: string }
+          description: Filtro su nome agenzia o referente.
+        - name: approved
+          in: query
+          schema: { type: boolean }
+          description: Se impostato, filtra in base allo stato di approvazione (`approvedAt` valorizzato).
+      responses:
+        '200':
+          description: Elenco agenzie
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AgencySummaryPage' }
+        '403':
+          description: Ruolo non autorizzato alla consultazione
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+
+  /users/agents:
+    get:
+      tags: [Users]
+      summary: Elenca i profili agente disponibili
+      description: |
+        - `SUPERADMIN` e `ADMIN` vedono tutti gli agenti registrati.
+        - `AGENCY` visualizza solo gli agenti appartenenti alla propria agenzia.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, minimum: 0, default: 0 }
+        - name: size
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+        - name: sort
+          in: query
+          schema:
+            type: array
+            items: { type: string }
+          style: form
+          explode: true
+          description: Criteri di ordinamento (`displayName,asc`, `reaNumber,desc`, `createdAt,desc`).
+        - name: search
+          in: query
+          schema: { type: string }
+          description: Ricerca su nome, email o numero REA.
+        - name: agencyId
+          in: query
+          schema: { type: string, format: uuid }
+          description: Filtra per agenzia (facoltativo per admin/superadmin, ignorato per utenti agency).
+      responses:
+        '200':
+          description: Elenco agenti
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AgentSummaryPage' }
+        '403':
+          description: Ruolo non autorizzato alla consultazione
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
 
   /agencies:
     post:
