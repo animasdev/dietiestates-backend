@@ -696,7 +696,6 @@ class ListingCreationServiceTest {
         var listingId = UUID.randomUUID();
         var agentRoleId = UUID.randomUUID();
         var pendingStatusId = UUID.randomUUID();
-        var publishedStatusId = UUID.randomUUID();
         var now = OffsetDateTime.now();
 
         var pendingDeleteUntil = now.plusHours(2);
@@ -748,8 +747,6 @@ class ListingCreationServiceTest {
         when(agentRepository.findByUserId(userId)).thenReturn(Optional.of(new Agent(agentId, userId, agencyId, "REA123", null, now, now)));
         when(listingStatusRepository.findByCode(ListingStatusesEnum.PENDING_DELETE.getDescription()))
                 .thenReturn(Optional.of(new ListingStatus(pendingStatusId, ListingStatusesEnum.PENDING_DELETE.getDescription(), "Pending delete", 3, now)));
-        when(listingStatusRepository.findByCode(ListingStatusesEnum.PUBLISHED.getDescription()))
-                .thenReturn(Optional.of(new ListingStatus(publishedStatusId, ListingStatusesEnum.PUBLISHED.getDescription(), "Published", 2, now)));
         when(moderationService.findLatestDeletionAction(listingId)).thenReturn(Optional.of(new ModerationAction(
                 UUID.randomUUID(),
                 listingId,
@@ -891,7 +888,6 @@ class ListingCreationServiceTest {
                 now.minusMonths(1)
         )));
         when(roleRepository.findById(agentRoleId)).thenReturn(Optional.of(new Role(agentRoleId, RolesEnum.AGENT.name(), "Agent", "Agente")));
-        when(agentRepository.findByUserId(userId)).thenReturn(Optional.of(new Agent(agentId, userId, agencyId, "REA123", null, now, now)));
         when(listingStatusRepository.findByCode(ListingStatusesEnum.PENDING_DELETE.getDescription()))
                 .thenReturn(Optional.of(new ListingStatus(pendingStatusId, ListingStatusesEnum.PENDING_DELETE.getDescription(), "Pending delete", 3, now)));
 
