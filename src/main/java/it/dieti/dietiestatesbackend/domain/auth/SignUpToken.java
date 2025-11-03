@@ -12,5 +12,6 @@ public record SignUpToken(
         OffsetDateTime expiresAt,
         OffsetDateTime consumedAt,
         OffsetDateTime createdAt,
-        OffsetDateTime updatedAt
+        OffsetDateTime updatedAt,
+        UUID invitedByUserId
 ) {}

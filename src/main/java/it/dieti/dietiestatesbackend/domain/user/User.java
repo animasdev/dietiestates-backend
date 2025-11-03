@@ -12,5 +12,6 @@ public record User(
         String passwordHash,
         String passwordAlgo,
         OffsetDateTime createdAt,
-        OffsetDateTime updatedAt
+        OffsetDateTime updatedAt,
+        UUID invitedByUserId
 ) {}

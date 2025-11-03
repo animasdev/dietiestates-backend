@@ -103,7 +103,8 @@ public class AgencyOnboardingService {
                 user.passwordHash(),
                 user.passwordAlgo(),
                 user.createdAt(),
-                user.updatedAt()
+                user.updatedAt(),
+                user.invitedByUserId()
         );
         userRepository.update(updated);
     }

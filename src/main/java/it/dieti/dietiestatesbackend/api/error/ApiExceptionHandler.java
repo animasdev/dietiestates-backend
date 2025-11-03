@@ -6,6 +6,7 @@ import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.metadata.ConstraintDescriptor;
 import java.util.List;
 import java.util.Locale;
+import org.apache.catalina.connector.ClientAbortException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -115,6 +116,12 @@ public class ApiExceptionHandler {
         log.warn("Accesso negato: {}", ex.getMessage());
         var response = ApiErrorResponse.of(HttpStatus.FORBIDDEN, message, null);
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
+    }
+
+    @ExceptionHandler(ClientAbortException.class)
+    public ResponseEntity<Void> handleClientAbort(ClientAbortException ex) {
+        log.debug("Connessione cliente interrotta durante la scrittura della risposta: {}", ex.getMessage());
+        return ResponseEntity.noContent().build();
     }
 
     @ExceptionHandler(Exception.class)

@@ -106,7 +106,8 @@ public class AgentOnboardingService {
                 user.passwordHash(),
                 user.passwordAlgo(),
                 user.createdAt(),
-                user.updatedAt()
+                user.updatedAt(),
+                user.invitedByUserId()
         );
         userRepository.update(updated);
     }

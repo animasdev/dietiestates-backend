@@ -21,6 +21,7 @@ import java.security.SecureRandom;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.util.HexFormat;
+import java.util.UUID;
 
 @Service
 public class AuthService {
@@ -52,7 +53,7 @@ public class AuthService {
         this.notificationService = notificationService;
     }
 
-    public record AuthLoginResult(String accessToken, boolean firstAccess) {}
+    public record AuthLoginResult(String accessToken, boolean firstAccess, UUID invitedByUserId) {}
 
     public AuthLoginResult login(String email, String password) {
         var normalized = email == null ? "" : email.trim();
@@ -67,6 +68,7 @@ public class AuthService {
         }
 
         boolean firstAccess = user.firstAccess();
+        UUID invitedBy = user.invitedByUserId();
         if (firstAccess) {
             var role = roleRepository.findById(user.roleId())
                     .orElseThrow(() -> new IllegalStateException("Role not found for user"));
@@ -81,7 +83,8 @@ public class AuthService {
                         user.passwordHash(),
                         user.passwordAlgo(),
                         user.createdAt(),
-                        user.updatedAt()
+                        user.updatedAt(),
+                        user.invitedByUserId()
                 );
                 userRepository.update(update);
                 firstAccess = false;
@@ -100,7 +103,7 @@ public class AuthService {
 
         var header = JwsHeader.with(MacAlgorithm.HS256).build();
         String token = jwtEncoder.encode(JwtEncoderParameters.from(header, claims)).getTokenValue();
-        return new AuthLoginResult(token, firstAccess);
+        return new AuthLoginResult(token, firstAccess, invitedBy);
     }
 
     private RolesEnum resolveRoleEnum(String code) {
@@ -116,7 +119,7 @@ public class AuthService {
     }
 
     @Transactional
-    public void requestSignUp(String email, String displayName, String requestedRoleCodeOrNull) {
+    public void requestSignUp(String email, String displayName, String requestedRoleCodeOrNull, UUID invitedByUserId) {
         var normalized = email == null ? "" : email.trim();
         var name = displayName == null ? "" : displayName.trim();
         if (normalized.isBlank() || name.isBlank()) {
@@ -137,7 +140,8 @@ public class AuthService {
             var t = existing.get();
             var refreshed = new SignUpToken(
                     t.id(), t.email(), t.displayName(), t.token(), t.roleId(),
-                    now.plusMinutes(SIGNUP_TOKEN_TTL_MINUTES), t.consumedAt(), t.createdAt(), now
+                    now.plusMinutes(SIGNUP_TOKEN_TTL_MINUTES), t.consumedAt(), t.createdAt(), now,
+                    invitedByUserId != null ? invitedByUserId : t.invitedByUserId()
             );
             signUpTokenRepository.update(refreshed);
             notificationService.sendSignUpConfirmation(normalized, t.token());
@@ -147,7 +151,7 @@ public class AuthService {
         String token = generateToken();
         var toInsert = new SignUpToken(
                 null, normalized, name, token, effectiveRole.id(),
-                now.plusMinutes(SIGNUP_TOKEN_TTL_MINUTES), null, now, now
+                now.plusMinutes(SIGNUP_TOKEN_TTL_MINUTES), null, now, now, invitedByUserId
         );
         signUpTokenRepository.insert(toInsert);
         notificationService.sendSignUpConfirmation(normalized, token);
@@ -173,12 +177,14 @@ public class AuthService {
                     passwordEncoder.encode(rawPassword),
                     passwordProps.getPasswordAlgo(),
                     null,
-                    null
+                    null,
+                    t.invitedByUserId()
             );
             userRepository.insert(user);
         }
         var consumed = new SignUpToken(
-                t.id(), t.email(), t.displayName(), t.token(), t.roleId(), t.expiresAt(), now, t.createdAt(), now
+                t.id(), t.email(), t.displayName(), t.token(), t.roleId(), t.expiresAt(), now, t.createdAt(), now,
+                t.invitedByUserId()
         );
         signUpTokenRepository.update(consumed);
         return true;

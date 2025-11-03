@@ -56,7 +56,8 @@ public class UserRepositoryJpaAdapter implements UserRepository {
                 e.getPasswordHash(),
                 e.getPasswordAlgo(),
                 e.getCreatedAt(),
-                e.getUpdatedAt()
+                e.getUpdatedAt(),
+                e.getInvitedBy() != null ? e.getInvitedBy().getId() : null
         );
     }
 
@@ -91,6 +92,11 @@ public class UserRepositoryJpaAdapter implements UserRepository {
         entity.setCreatedAt(OffsetDateTime.now());
         entity.setUpdatedAt(OffsetDateTime.now());
         entity.setRole(roleRef);
+        if (user.invitedByUserId() != null) {
+            var inviterRef = new UserEntity();
+            inviterRef.setId(user.invitedByUserId());
+            entity.setInvitedBy(inviterRef);
+        }
         return entity;
     }
 
@@ -109,6 +115,13 @@ public class UserRepositoryJpaAdapter implements UserRepository {
         existing.setFirstAccess(user.firstAccess());
         existing.setPasswordHash(user.passwordHash());
         existing.setPasswordAlgo(user.passwordAlgo());
+        if (user.invitedByUserId() != null) {
+            var inviterRef = new UserEntity();
+            inviterRef.setId(user.invitedByUserId());
+            existing.setInvitedBy(inviterRef);
+        } else {
+            existing.setInvitedBy(null);
+        }
         existing.setUpdatedAt(OffsetDateTime.now());
 
         var saved = jpaRepository.saveAndFlush(existing);

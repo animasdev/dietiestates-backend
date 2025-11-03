@@ -2,6 +2,7 @@ package it.dieti.dietiestatesbackend.infrastructure.persistence.jpa.auth;
 
 import it.dieti.dietiestatesbackend.domain.auth.SignUpToken;
 import it.dieti.dietiestatesbackend.domain.auth.SignUpTokenRepository;
+import it.dieti.dietiestatesbackend.infrastructure.persistence.jpa.user.UserEntity;
 import it.dieti.dietiestatesbackend.infrastructure.persistence.jpa.user.role.RoleEntity;
 import org.springframework.stereotype.Component;
 
@@ -55,7 +56,8 @@ public class SignUpTokenRepositoryJpaAdapter implements SignUpTokenRepository {
                 e.getExpiresAt(),
                 e.getConsumedAt(),
                 e.getCreatedAt(),
-                e.getUpdatedAt()
+                e.getUpdatedAt(),
+                e.getInvitedBy() != null ? e.getInvitedBy().getId() : null
         );
     }
 
@@ -76,6 +78,13 @@ public class SignUpTokenRepositoryJpaAdapter implements SignUpTokenRepository {
         e.setConsumedAt(d.consumedAt());
         e.setCreatedAt(d.createdAt());
         e.setUpdatedAt(d.updatedAt());
+        if (d.invitedByUserId() != null) {
+            var inviter = new UserEntity();
+            inviter.setId(d.invitedByUserId());
+            e.setInvitedBy(inviter);
+        } else {
+            e.setInvitedBy(null);
+        }
         return e;
     }
 }

@@ -8,6 +8,7 @@ import it.dieti.dietiestatesbackend.application.exception.ConflictException;
 import it.dieti.dietiestatesbackend.application.exception.ForbiddenException;
 import it.dieti.dietiestatesbackend.application.exception.UnauthorizedException;
 import it.dieti.dietiestatesbackend.application.onboarding.OnboardingException;
+import it.dieti.dietiestatesbackend.domain.agency.AgencyRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -18,13 +19,17 @@ import org.springframework.stereotype.Service;
 
 import java.util.UUID;
 
+import static it.dieti.dietiestatesbackend.application.onboarding.OnboardingException.Reason.AGENCY_NOT_FOUND;
+
 @Service
 public class AgentsApiDelegateImpl implements AgentsApiDelegate {
     private final AgentOnboardingService agentOnboardingService;
     private static final Logger log = LoggerFactory.getLogger(AgentsApiDelegateImpl.class);
+    private final AgencyRepository agencyRepository;
 
-    public AgentsApiDelegateImpl(AgentOnboardingService agentOnboardingService) {
+    public AgentsApiDelegateImpl(AgentOnboardingService agentOnboardingService, AgencyRepository agencyRepository) {
         this.agentOnboardingService = agentOnboardingService;
+        this.agencyRepository = agencyRepository;
     }
 
     @Override
@@ -37,8 +42,10 @@ public class AgentsApiDelegateImpl implements AgentsApiDelegate {
 
         var userId = UUID.fromString(jwtAuth.getToken().getSubject());
         try {
+            var agency = agencyRepository.findByUserId(agentCreateRequest.getAgencyId()).orElseThrow(()->new OnboardingException(AGENCY_NOT_FOUND,""));
+            log.info("[Agent Onboarding] agenzia torvata? {}",agency.id());
             var command = new AgentOnboardingService.CompleteAgentProfileCommand(
-                    agentCreateRequest.getAgencyId(),
+                    agency.id(),
                     agentCreateRequest.getReaNumber(),
                     agentCreateRequest.getProfilePhotoMediaId()
             );

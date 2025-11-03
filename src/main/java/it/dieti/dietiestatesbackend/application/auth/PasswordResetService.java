@@ -85,7 +85,8 @@ public class PasswordResetService {
                 passwordEncoder.encode(newPassword),
                 passwordProps.getPasswordAlgo(),
                 u.createdAt(),
-                OffsetDateTime.now()
+                OffsetDateTime.now(),
+                u.invitedByUserId()
         );
         userRepository.update(updatedUser);
 
@@ -112,7 +113,8 @@ public class PasswordResetService {
                 passwordEncoder.encode(newPassword),
                 passwordProps.getPasswordAlgo(),
                 u.createdAt(),
-                OffsetDateTime.now()
+                OffsetDateTime.now(),
+                u.invitedByUserId()
         );
         userRepository.update(updatedUser);
         return true;

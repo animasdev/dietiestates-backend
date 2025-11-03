@@ -416,6 +416,12 @@ paths:
                   firstAccess:
                     type: boolean
                     description: true se l'utente è al primo accesso e deve cambiare password
+                  invitedBy:
+                    type: string
+                    format: uuid
+                    nullable: true
+                    description: |
+                      Identificativo dell'utente che ha generato l'invito; valorizzato solo se `firstAccess` è true
         '401':
           description: Invalid credentials
           content:

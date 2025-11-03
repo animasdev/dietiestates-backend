@@ -58,6 +58,7 @@ public class UserService {
                 passwordHash,
                 passwordProps.getPasswordAlgo(),
                 null,
+                null,
                 null
         );
         userRepository.insert(user);

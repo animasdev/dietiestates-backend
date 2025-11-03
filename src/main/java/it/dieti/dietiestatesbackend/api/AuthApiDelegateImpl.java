@@ -18,6 +18,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Service;
 import java.util.Arrays;
+import java.util.UUID;
 
 @Service
 public class AuthApiDelegateImpl implements AuthApiDelegate {
@@ -39,6 +40,11 @@ public class AuthApiDelegateImpl implements AuthApiDelegate {
             AuthLoginPost200Response body = new AuthLoginPost200Response();
             body.setAccessToken(result.accessToken());
             body.setFirstAccess(result.firstAccess());
+            if (result.firstAccess()) {
+                body.setInvitedBy(result.invitedByUserId());
+            } else {
+                body.setInvitedBy(null);
+            }
             return ResponseEntity.ok(body);
         } catch (BadCredentialsException ex) {
             log.warn("Login fallito per email {}", authLoginPostRequest.getEmail());
@@ -54,7 +60,8 @@ public class AuthApiDelegateImpl implements AuthApiDelegate {
     @Override
     public ResponseEntity<Void> authSignUpRequestPost(AuthSignUpRequestPostRequest request) {
         String requestedRoleCode = resolveRequestedRoleCode(request);
-        authService.requestSignUp(request.getEmail(), request.getDisplayName(), requestedRoleCode);
+        UUID invitedBy = resolveInvitedBy(requestedRoleCode);
+        authService.requestSignUp(request.getEmail(), request.getDisplayName(), requestedRoleCode, invitedBy);
         return ResponseEntity.accepted().build();
     }
 
@@ -147,5 +154,20 @@ public class AuthApiDelegateImpl implements AuthApiDelegate {
             log.debug("Failed to resolve caller role from JWT", e);
             return null;
         }
+    }
+
+    private UUID resolveInvitedBy(String requestedRoleCode) {
+        if (requestedRoleCode == null || requestedRoleCode.isBlank()) {
+            return null;
+        }
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth instanceof JwtAuthenticationToken jwtAuth) {
+            try {
+                return UUID.fromString(jwtAuth.getToken().getSubject());
+            } catch (IllegalArgumentException ex) {
+                log.warn("Impossibile estrarre l'utente invitante dal token JWT", ex);
+            }
+        }
+        return null;
     }
 }

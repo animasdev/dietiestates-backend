@@ -1,5 +1,6 @@
 package it.dieti.dietiestatesbackend.infrastructure.persistence.jpa.auth;
 
+import it.dieti.dietiestatesbackend.infrastructure.persistence.jpa.user.UserEntity;
 import it.dieti.dietiestatesbackend.infrastructure.persistence.jpa.user.role.RoleEntity;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -32,6 +33,9 @@ public class SignUpTokenEntity {
     @ManyToOne(fetch = LAZY)
     @JoinColumn(name = "role_id", nullable = false)
     private RoleEntity role;
+    @ManyToOne(fetch = LAZY)
+    @JoinColumn(name = "invited_by")
+    private UserEntity invitedBy;
 
     @Column(name = "expires_at", nullable = false)
     private OffsetDateTime expiresAt;

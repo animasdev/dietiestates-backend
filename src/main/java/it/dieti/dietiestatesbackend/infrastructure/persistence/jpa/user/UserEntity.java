@@ -36,5 +36,8 @@ public class UserEntity {
     private OffsetDateTime createdAt;
     @Column(name = "updated_at")
     private OffsetDateTime updatedAt;
+    @ManyToOne(fetch = LAZY)
+    @JoinColumn(name = "invited_by")
+    private UserEntity invitedBy;
 
 }
