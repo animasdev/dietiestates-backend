@@ -204,7 +204,13 @@ public class ListingsApiDelegateImpl implements ListingsApiDelegate {
     public ResponseEntity<Listing> listingsIdGet(
             @Parameter(name = "id", description = "", required = true, in = ParameterIn.PATH) UUID id
     ){
-        var body = getFullListing(id);
+        UUID userId = null;
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth instanceof JwtAuthenticationToken jwtAuth) {
+            userId = UUID.fromString(jwtAuth.getToken().getSubject());
+        }
+
+        var body = getFullListing(id,userId);
         return ResponseEntity.status(HttpStatus.OK).body(body);
     }
 
@@ -296,8 +302,8 @@ public class ListingsApiDelegateImpl implements ListingsApiDelegate {
         return ResponseEntity.status(HttpStatus.OK).body(getFullListing(listing.id()));
     }
 
-    private Listing getFullListing(UUID id) {
-        var listingDetails = listingCreationService.getListingDetails(id);
+    private Listing getFullListing(UUID id, UUID userId) {
+        var listingDetails = listingCreationService.getListingDetails(id,userId);
         var photos = listingMediaService.getListingPhotos(id);
         var features = featureService.getListingFeatures(id).stream().map(Feature::code).toList();
         return toApi(
@@ -307,6 +313,9 @@ public class ListingsApiDelegateImpl implements ListingsApiDelegate {
                 photos.stream().map(this::toApi).toList(),
                 features
         );
+    }
+    private Listing getFullListing(UUID id) {
+       return getFullListing(id, null);
     }
 
     private void requireField(Object value, String field) {

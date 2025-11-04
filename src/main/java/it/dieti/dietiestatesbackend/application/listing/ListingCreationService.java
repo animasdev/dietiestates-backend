@@ -60,6 +60,7 @@ public class ListingCreationService {
     private static final String ENERGY_CLASS_INVALID_MESSAGE = "Valore non valido per 'energyClass'. Valori ammessi: " + String.join(", ", SUPPORTED_ENERGY_CLASSES_ORDERED) + ".";
     private static final String SECURITY_DEPOSIT_NON_NEGATIVE_MESSAGE = "Il campo 'securityDepositCents' deve essere maggiore o uguale a zero.";
     private static final String CONDO_FEE_NON_NEGATIVE_MESSAGE = "Il campo 'condoFeeCents' deve essere maggiore o uguale a zero.";
+    public static final String ANNUNCIO = "Annuncio";
 
     private final ListingRepository listingRepository;
     private final ListingTypeRepository listingTypeRepository;
@@ -239,7 +240,7 @@ public class ListingCreationService {
         }
         var listing = requireListing(listingId);
         if (!isPrivileged) {
-            ensureOwnership(agent, listing, listingId);
+            ensureOwnership(agent, listing);
         } else {
             log.info("Privileged user {} with role {} updated listing {}", userId, userRole, listingId);
         }
@@ -389,7 +390,7 @@ public class ListingCreationService {
         boolean isPrivileged = userRole == RolesEnum.ADMIN || userRole == RolesEnum.SUPERADMIN;
         if (!isPrivileged) {
             var agent = requireAgent(userId);
-            ensureOwnership(agent, listing, listingId);
+            ensureOwnership(agent, listing);
 
             if (latestDeletion.performedByRole() == RolesEnum.ADMIN || latestDeletion.performedByRole() == RolesEnum.SUPERADMIN) {
                 log.warn("Agent {} ha tentato di ripristinare annuncio {} cancellato da admin", agent.id(), listingId);
@@ -451,13 +452,13 @@ public class ListingCreationService {
         return listingRepository.findById(listingId)
                 .orElseThrow(() -> {
                     log.warn("Annuncio {} non trovato durante aggiornamento", listingId);
-                    return NotFoundException.resourceNotFound("Annuncio", listingId);
+                    return NotFoundException.resourceNotFound(ANNUNCIO, listingId);
                 });
     }
 
-    private void ensureOwnership(Agent agent, Listing listing, UUID listingId) {
+    private void ensureOwnership(Agent agent, Listing listing) {
         if (!agent.id().equals(listing.ownerAgentId())) {
-            log.warn("Agent {} attempted to update listing {} not owned", agent.id(), listingId);
+            log.warn("Agent {} attempted to update listing {} not owned", agent.id(), listing.id());
             throw ForbiddenException.of("Permesso negato: puoi modificare solo gli annunci che hai creato.");
         }
     }
@@ -646,13 +647,13 @@ public class ListingCreationService {
         );
     }
 
-    public ListingDetails getListingDetails(UUID listingId) {
+    public ListingDetails getListingDetails(UUID listingId, UUID userId) {
         Objects.requireNonNull(listingId, LISTING_ID_REQUIRED_MESSAGE);
 
         var listing = listingRepository.findById(listingId)
                 .orElseThrow(() -> {
                     log.warn("Annuncio {} non trovato durante recupero dettagli", listingId);
-                    return NotFoundException.resourceNotFound("Annuncio", listingId);
+                    return NotFoundException.resourceNotFound(ANNUNCIO, listingId);
                 });
 
         ListingType listingType = null;
@@ -673,6 +674,22 @@ public class ListingCreationService {
                     });
         }
 
+        if (userId != null){
+            var userRole = resolveUserRole(userId);
+            boolean isPrivileged = userRole == RolesEnum.ADMIN || userRole == RolesEnum.SUPERADMIN;
+            if (!isPrivileged) {
+                try {
+                    var agent = requireAgent(userId);
+                    ensureOwnership(agent,listing);
+                } catch (Exception e) {
+                    throw NotFoundException.resourceNotFound(ANNUNCIO, listingId);
+                }
+            }
+        } else {
+            if (listingStatus== null || !listingStatus.code().equals(ListingStatusesEnum.PUBLISHED.getDescription())) {
+                throw NotFoundException.resourceNotFound(ANNUNCIO, listingId);
+            }
+        }
         return new ListingDetails(listing, listingType, listingStatus);
     }
 
