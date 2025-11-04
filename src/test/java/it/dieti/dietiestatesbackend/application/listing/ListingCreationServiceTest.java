@@ -218,7 +218,8 @@ class ListingCreationServiceTest {
                 null,
                 null,
                 OffsetDateTime.now(),
-                OffsetDateTime.now()
+                OffsetDateTime.now(),
+                null
         )));
         when(roleRepository.findById(adminRoleId)).thenReturn(Optional.of(new Role(adminRoleId, RolesEnum.ADMIN.name(), "Admin", "Amministratore")));
 
@@ -460,7 +461,8 @@ class ListingCreationServiceTest {
                 null,
                 null,
                 now.minusYears(1),
-                now.minusMonths(1)
+                now.minusMonths(1),
+                null
         )));
         when(roleRepository.findById(agentRoleId)).thenReturn(Optional.of(new Role(agentRoleId, RolesEnum.AGENT.name(), "Agent", "Agente")));
         var agent = new Agent(agentId, userId, agencyId, "REA123", null, now, now);
@@ -527,7 +529,8 @@ class ListingCreationServiceTest {
                 null,
                 null,
                 now.minusYears(1),
-                now.minusMonths(1)
+                now.minusMonths(1),
+                null
         )));
         when(roleRepository.findById(adminRoleId)).thenReturn(Optional.of(new Role(adminRoleId, RolesEnum.ADMIN.name(), "Admin", "Amministratore")));
         when(listingStatusRepository.findById(statusId))
@@ -546,7 +549,8 @@ class ListingCreationServiceTest {
                 null,
                 null,
                 now.minusYears(2),
-                now.minusMonths(2)
+                now.minusMonths(2),
+                null
         )));
         when(listingRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -605,7 +609,8 @@ class ListingCreationServiceTest {
                 null,
                 null,
                 now.minusYears(1),
-                now.minusMonths(1)
+                now.minusMonths(1),
+                null
         )));
         when(roleRepository.findById(agentRoleId)).thenReturn(Optional.of(new Role(agentRoleId, RolesEnum.AGENT.name(), "Agent", "Agente")));
         var agent = new Agent(agentId, userId, agencyId, "REA123", null, now, now);
@@ -664,7 +669,8 @@ class ListingCreationServiceTest {
                 null,
                 null,
                 now.minusYears(1),
-                now.minusMonths(1)
+                now.minusMonths(1),
+                null
         )));
         when(roleRepository.findById(agentRoleId)).thenReturn(Optional.of(new Role(agentRoleId, RolesEnum.AGENT.name(), "Agent", "Agente")));
         var agent = new Agent(agentId, userId, agencyId, "REA123", null, now, now);
@@ -741,7 +747,8 @@ class ListingCreationServiceTest {
                 null,
                 null,
                 now.minusYears(1),
-                now.minusMonths(1)
+                now.minusMonths(1),
+                null
         )));
         when(roleRepository.findById(agentRoleId)).thenReturn(Optional.of(new Role(agentRoleId, RolesEnum.AGENT.name(), "Agent", "Agente")));
         when(agentRepository.findByUserId(userId)).thenReturn(Optional.of(new Agent(agentId, userId, agencyId, "REA123", null, now, now)));
@@ -811,7 +818,8 @@ class ListingCreationServiceTest {
                 null,
                 null,
                 now.minusYears(1),
-                now.minusMonths(1)
+                now.minusMonths(1),
+                null
         )));
         when(roleRepository.findById(adminRoleId)).thenReturn(Optional.of(new Role(adminRoleId, RolesEnum.ADMIN.name(), "Admin", "Amministratore")));
         when(listingStatusRepository.findByCode(ListingStatusesEnum.PENDING_DELETE.getDescription()))
@@ -885,7 +893,8 @@ class ListingCreationServiceTest {
                 null,
                 null,
                 now.minusYears(1),
-                now.minusMonths(1)
+                now.minusMonths(1),
+                null
         )));
         when(roleRepository.findById(agentRoleId)).thenReturn(Optional.of(new Role(agentRoleId, RolesEnum.AGENT.name(), "Agent", "Agente")));
         when(listingStatusRepository.findByCode(ListingStatusesEnum.PENDING_DELETE.getDescription()))
@@ -942,7 +951,8 @@ class ListingCreationServiceTest {
                 null,
                 null,
                 now.minusYears(1),
-                now.minusMonths(1)
+                now.minusMonths(1),
+                null
         )));
         when(roleRepository.findById(agentRoleId)).thenReturn(Optional.of(new Role(agentRoleId, RolesEnum.AGENT.name(), "Agent", "Agente")));
         var agent = new Agent(agentId, userId, agencyId, "REA123", null, now, now);
@@ -1059,7 +1069,8 @@ class ListingCreationServiceTest {
                 null,
                 null,
                 OffsetDateTime.now(),
-                OffsetDateTime.now()
+                OffsetDateTime.now(),
+                null
         )));
         when(roleRepository.findById(adminRoleId)).thenReturn(Optional.of(new Role(adminRoleId, RolesEnum.ADMIN.name(), "Admin", "Amministratore")));
         when(agentRepository.findByUserId(userId)).thenReturn(Optional.empty());
@@ -1147,7 +1158,8 @@ class ListingCreationServiceTest {
                 null,
                 null,
                 OffsetDateTime.now(),
-                OffsetDateTime.now()
+                OffsetDateTime.now(),
+                null
         )));
         when(roleRepository.findById(agentRoleId)).thenReturn(Optional.of(new Role(agentRoleId, RolesEnum.AGENT.name(), "Agent", "Agente")));
         var agent = new Agent(agentId, userId, agencyId, "REA123", null, OffsetDateTime.now(), OffsetDateTime.now());
@@ -1221,7 +1233,8 @@ class ListingCreationServiceTest {
                 null,
                 null,
                 OffsetDateTime.now(),
-                OffsetDateTime.now()
+                OffsetDateTime.now(),
+                null
         )));
         when(roleRepository.findById(agentRoleId)).thenReturn(Optional.of(new Role(agentRoleId, RolesEnum.AGENT.name(), "Agent", "Agente")));
         var agent = new Agent(agentId, userId, agencyId, "REA123", null, OffsetDateTime.now(), OffsetDateTime.now());
@@ -1295,7 +1308,8 @@ class ListingCreationServiceTest {
                 null,
                 null,
                 OffsetDateTime.now(),
-                OffsetDateTime.now()
+                OffsetDateTime.now(),
+                null
         )));
         when(roleRepository.findById(agentRoleId)).thenReturn(Optional.of(new Role(agentRoleId, RolesEnum.AGENT.name(), "Agent", "Agente")));
         var agent = new Agent(agentId, userId, agencyId, "REA123", null, OffsetDateTime.now(), OffsetDateTime.now());

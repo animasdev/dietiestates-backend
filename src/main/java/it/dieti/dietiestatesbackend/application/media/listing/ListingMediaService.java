@@ -31,6 +31,7 @@ public class ListingMediaService {
 
     private static final Logger log = LoggerFactory.getLogger(ListingMediaService.class);
     private static final String POSITIONS_FIELD = "positions";
+    private static final String ID_FIELD = "id";
     private final ListingRepository listingRepository;
     private final MediaAssetService mediaAssetService;
     private final ListingMediaRepository listingMediaRepository;
@@ -49,7 +50,11 @@ public class ListingMediaService {
         this.agentRepository = agentRepository;
     }
 
+    /**
+     * @deprecated
+     */
     @Transactional
+    @Deprecated(since = "2025-11-04")
     public List<ListingPhoto> uploadListingPhotos(UUID userId,
                                                   UUID listingId,
                                                   List<MultipartFile> files,
@@ -63,7 +68,6 @@ public class ListingMediaService {
             throw ForbiddenException.actionRequiresRole("proprietario");
         }
 
-        validatePositions(listingId, positions, userId);
 
         List<ListingPhoto> photos = new ArrayList<>();
         for (int index = 0; index < files.size(); index++) {
@@ -87,28 +91,70 @@ public class ListingMediaService {
         return photos;
     }
 
-    private void validatePositions(UUID listingId, List<Integer> positions, UUID userId) {
-        if (positions == null || positions.isEmpty()) {
-            log.warn("Upload foto listing {} da user {} senza posizioni", listingId, userId);
-            throw BadRequestException.forField(POSITIONS_FIELD, "Il campo 'positions' è obbligatorio.");
+    @Transactional
+    public List<ListingPhoto> attachListingPhotos(UUID userId, UUID listingId, List<ListingPhoto> photos) {
+        if (photos == null || photos.isEmpty()) {
+            log.warn("Tentativo di associazione foto a listing {} da user {} senza foto", listingId, userId);
+            throw BadRequestException.forField("photos", "array 'photos' è vuoto");
         }
 
-        Set<Integer> seen = new HashSet<>();
-        for (Integer position : positions) {
+        var agent = agentRepository.findByUserId(userId)
+                .orElseThrow(AgentProfileRequiredException::new);
+        var listing = listingRepository.findById(listingId)
+                .orElseThrow(() -> new NoSuchElementException("listing"));
+
+        if (!agent.id().equals(listing.ownerAgentId())) {
+            throw ForbiddenException.actionRequiresRole("proprietario");
+        }
+
+        validatePhotoList(listingId,photos,userId);
+        List<ListingPhoto> addedPhotos = new ArrayList<>();
+        for (ListingPhoto photo : photos) {
+            var media = mediaAssetService.getListingPhoto(photo.getId());
+            var listingMedia = new ListingMedia(
+                    null,
+                    listing.id(),
+                    media.id(),
+                    photo.getPosition(),
+                    null,
+                    null
+            );
+            var saved = listingMediaRepository.save(listingMedia);
+            addedPhotos.add(new ListingPhoto()
+                    .id(saved.id())
+                    .url(URI.create(media.publicUrl()))
+                    .position(photo.getPosition()));
+        }
+        return addedPhotos;
+    }
+
+    private void validatePhotoList(UUID listingId, List<ListingPhoto> photos, UUID userId) {
+        if (photos == null || photos.isEmpty()) {
+            return;
+        }
+
+        Set<Integer> seenPositions = new HashSet<>();
+        for (ListingPhoto photo : photos) {
+            var position = photo.getPosition();
             if (position == null || position < 1) {
                 log.warn("Posizione non valida {} per listing {} (user {})", position, listingId, userId);
                 throw BadRequestException.forField(POSITIONS_FIELD, "Le posizioni devono essere valori interi positivi univoci.");
             }
-            if (!seen.add(position)) {
+            if (!seenPositions.add(position)) {
                 log.warn("Posizione duplicata {} nella stessa richiesta per listing {} (user {})", position, listingId, userId);
                 throw BadRequestException.forField(POSITIONS_FIELD, "Le posizioni nella richiesta devono essere univoche.");
+            }
+            var duplicated = listingMediaRepository.findByMediaId(photo.getId());
+            if (!duplicated.isEmpty()){
+                log.warn("media '{}' associato a listing '{}' ", photo.getId(), duplicated.getFirst().listingId());
+                throw BadRequestException.forField(ID_FIELD,"media '"+photo.getId()+" già associato ad un listing.");
             }
         }
 
         var existingPositions = listingMediaRepository.findByListingId(listingId).stream()
                 .map(ListingMedia::sortOrder)
                 .collect(Collectors.toSet());
-        for (Integer position : positions) {
+        for (Integer position : seenPositions) {
             if (existingPositions.contains(position)) {
                 log.warn("Posizione {} già occupata per listing {} (user {})", position, listingId, userId);
                 throw BadRequestException.forField(POSITIONS_FIELD, "Posizione già assegnata a una foto esistente.");
@@ -121,7 +167,7 @@ public class ListingMediaService {
                 .map(media -> mediaAssetRepository.findById(media.mediaId())
                         .map(asset -> new ListingPhotoView(media.id(), asset.publicUrl(), media.sortOrder()))
                         .orElseGet(() -> {
-                            log.warn("Asset {} non trovato durante fetch foto listing {}", media.mediaId(), listingId);
+                            log.warn("Media {} non trovato durante fetch foto listing {}", media.mediaId(), listingId);
                             return null;
                         }))
                 .filter(Objects::nonNull)

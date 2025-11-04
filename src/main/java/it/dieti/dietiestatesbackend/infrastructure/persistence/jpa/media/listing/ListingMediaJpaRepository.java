@@ -9,5 +9,7 @@ public interface ListingMediaJpaRepository extends JpaRepository<ListingMediaEnt
 
     List<ListingMediaEntity> findAllByListing_IdOrderBySortOrderAsc(UUID listingId);
 
+    List<ListingMediaEntity> findAllByMediaIdOrderBySortOrderAsc(UUID mediaId);
+
     Optional<ListingMediaEntity> findFirstByListing_IdOrderBySortOrderDesc(UUID listingId);
 }

@@ -816,7 +816,7 @@ paths:
                 items: { $ref: '#/components/schemas/ListingPhoto' }
     post:
       tags: [Listing Photos]
-      summary: Upload and attach photos (multipart)
+      summary: attach photos to listing
       security:
         - bearerAuth: []
       parameters:
@@ -827,22 +827,10 @@ paths:
       requestBody:
         required: true
         content:
-          multipart/form-data:
+          application/json:
             schema:
-              type: object
-              required: [files, positions]
-              properties:
-                files:
-                  type: array
-                  items:
-                    type: string
-                    format: binary
-                positions:
-                  type: array
-                  items: { type: integer }
-            encoding:
-              files:
-                style: form
+              type: array
+              items: { $ref: '#/components/schemas/ListingPhoto' }
       responses:
         '201':
           description: Photos added

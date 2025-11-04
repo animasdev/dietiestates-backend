@@ -6,6 +6,7 @@ import it.dieti.dietiestatesbackend.infrastructure.persistence.jpa.user.UserEnti
 import org.springframework.stereotype.Repository;
 
 import java.time.OffsetDateTime;
+import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -20,6 +21,14 @@ public class MediaAssetRepositoryJpaAdapter implements MediaAssetRepository {
     @Override
     public Optional<MediaAsset> findById(UUID id) {
         return jpaRepository.findById(id).map(this::toDomain);
+    }
+
+    @Override
+    public MediaAsset getByIdAndCategory(UUID id, UUID categoryId) {
+        var entity = jpaRepository
+                .findByIdAndCategory_Id(id, categoryId)
+                .orElseThrow(() -> new NoSuchElementException("Nessun media asset con id '" + id + "' e category-id '" + categoryId + "'"));
+        return toDomain(entity);
     }
 
     @Override

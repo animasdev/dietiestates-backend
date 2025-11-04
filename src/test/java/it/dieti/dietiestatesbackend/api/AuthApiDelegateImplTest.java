@@ -38,6 +38,7 @@ class AuthApiDelegateImplTest {
     private AuthApiDelegateImpl delegate;
 
     private SecurityContext originalContext;
+    private UUID authenticatedUserId;
 
     @BeforeEach
     void setUp() {
@@ -52,18 +53,18 @@ class AuthApiDelegateImplTest {
     }
 
     private void mockAuthenticatedCallerWithRoleCode(String roleCode) {
-        var userId = UUID.randomUUID();
+        authenticatedUserId = UUID.randomUUID();
         var callerRoleId = UUID.randomUUID();
         // Mock resolution of caller role via UserService
-        when(userService.findUserById(userId))
-                .thenReturn(new User(userId, "Caller", "caller@example.com", false, callerRoleId, null, null, null, null));
+        when(userService.findUserById(authenticatedUserId))
+                .thenReturn(new User(authenticatedUserId, "Caller", "caller@example.com", false, callerRoleId, null, null, null, null, null));
         when(userService.getRoleCode(callerRoleId)).thenReturn(roleCode);
 
         // Build a minimal Jwt with subject = userId
         Jwt jwt = Jwt.withTokenValue("token")
-                .subject(userId.toString())
+                .subject(authenticatedUserId.toString())
                 .header("alg", "none")
-                .claim("sub", userId.toString())
+                .claim("sub", authenticatedUserId.toString())
                 .build();
         JwtAuthenticationToken auth = new JwtAuthenticationToken(jwt);
         var context = SecurityContextHolder.createEmptyContext();
@@ -83,10 +84,12 @@ class AuthApiDelegateImplTest {
         delegate.authSignUpRequestPost(req);
 
         ArgumentCaptor<String> roleArg = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<UUID> inviterArg = ArgumentCaptor.forClass(UUID.class);
         verify(authService, times(1))
-                .requestSignUp(eq("new-admin@example.com"), eq("New Admin"), roleArg.capture());
+                .requestSignUp(eq("new-admin@example.com"), eq("New Admin"), roleArg.capture(), inviterArg.capture());
 
         assertThat(roleArg.getValue()).isEqualTo("ADMIN");
+        assertThat(inviterArg.getValue()).isEqualTo(authenticatedUserId);
     }
 
     @Test
@@ -101,10 +104,12 @@ class AuthApiDelegateImplTest {
         delegate.authSignUpRequestPost(req);
 
         ArgumentCaptor<String> roleArg = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<UUID> inviterArg = ArgumentCaptor.forClass(UUID.class);
         verify(authService, times(1))
-                .requestSignUp(eq("new-agency@example.com"), eq("New Agency"), roleArg.capture());
+                .requestSignUp(eq("new-agency@example.com"), eq("New Agency"), roleArg.capture(), inviterArg.capture());
 
         assertThat(roleArg.getValue()).isEqualTo("AGENCY");
+        assertThat(inviterArg.getValue()).isEqualTo(authenticatedUserId);
     }
 
     @Test
@@ -119,10 +124,12 @@ class AuthApiDelegateImplTest {
         delegate.authSignUpRequestPost(req);
 
         ArgumentCaptor<String> roleArg = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<UUID> inviterArg = ArgumentCaptor.forClass(UUID.class);
         verify(authService, times(1))
-                .requestSignUp(eq("agency@example.com"), eq("Agency"), roleArg.capture());
+                .requestSignUp(eq("agency@example.com"), eq("Agency"), roleArg.capture(), inviterArg.capture());
 
         assertThat(roleArg.getValue()).isEqualTo("AGENCY");
+        assertThat(inviterArg.getValue()).isEqualTo(authenticatedUserId);
     }
 
     @Test
@@ -137,11 +144,13 @@ class AuthApiDelegateImplTest {
         delegate.authSignUpRequestPost(req);
 
         ArgumentCaptor<String> roleArg = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<UUID> inviterArg = ArgumentCaptor.forClass(UUID.class);
         verify(authService, times(1))
-                .requestSignUp(eq("agent@example.com"), eq("Agent"), roleArg.capture());
+                .requestSignUp(eq("agent@example.com"), eq("Agent"), roleArg.capture(), inviterArg.capture());
 
         // Desired behavior: agency can create agent. If this fails, update RolesPolicy accordingly.
         assertThat(roleArg.getValue()).isEqualTo("AGENT");
+        assertThat(inviterArg.getValue()).isEqualTo(authenticatedUserId);
     }
 
     @Test
@@ -157,7 +166,7 @@ class AuthApiDelegateImplTest {
                 .isInstanceOf(ForbiddenException.class)
                 .hasMessageContaining("Permesso negato");
 
-        verify(authService, never()).requestSignUp(any(), any(), any());
+        verify(authService, never()).requestSignUp(anyString(), anyString(), anyString(), any(UUID.class));
     }
 
     @Test
@@ -191,6 +200,18 @@ class AuthApiDelegateImplTest {
                 .isInstanceOf(ForbiddenException.class)
                 .hasMessageContaining("Permesso negato");
 
-        verify(authService, never()).requestSignUp(any(), any(), any());
+        verify(authService, never()).requestSignUp(anyString(), anyString(), anyString(), any(UUID.class));
+    }
+
+    @Test
+    void anonymous_request_has_null_invitedBy_and_role() {
+        AuthSignUpRequestPostRequest req = new AuthSignUpRequestPostRequest();
+        req.setEmail("someone@example.com");
+        req.setDisplayName("Someone");
+        // roleCode left null by design
+
+        delegate.authSignUpRequestPost(req);
+
+        verify(authService).requestSignUp(eq("someone@example.com"), eq("Someone"), isNull(), isNull());
     }
 }

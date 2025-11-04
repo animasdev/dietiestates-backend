@@ -60,6 +60,13 @@ public class ListingMediaRepositoryJpaAdapter implements ListingMediaRepository 
     }
 
     @Override
+    public List<ListingMedia> findByMediaId(UUID mediaId) {
+        return repository.findAllByMediaIdOrderBySortOrderAsc(mediaId).stream()
+                .map(this::toDomain)
+                .toList();
+    }
+
+    @Override
     public Integer findNextOrderByListingId(UUID listingId) {
         return repository.findFirstByListing_IdOrderBySortOrderDesc(listingId)
                 .map(entity -> entity.getSortOrder() + 1)
