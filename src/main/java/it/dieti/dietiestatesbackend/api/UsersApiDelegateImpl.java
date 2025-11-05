@@ -248,6 +248,7 @@ public class UsersApiDelegateImpl implements UsersApiDelegate {
         UserInfoAgencyProfile api = new UserInfoAgencyProfile();
         api.setName(profile.name());
         api.setDescription(profile.description());
+        api.agencyId(profile.agencyId());
         if (profile.logoUrl() != null && !profile.logoUrl().isBlank()) {
             api.setLogoUrl(URI.create(profile.logoUrl()));
         }
@@ -258,6 +259,7 @@ public class UsersApiDelegateImpl implements UsersApiDelegate {
         UserInfoAgentProfile api = new UserInfoAgentProfile();
         api.setAgencyId(profile.agencyId());
         api.setReaNumber(profile.reaNumber());
+        api.agentId(profile.agentId());
         if (profile.profilePhotoUrl() != null && !profile.profilePhotoUrl().isBlank()) {
             api.setProfilePhotoUrl(URI.create(profile.profilePhotoUrl()));
         }

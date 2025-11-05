@@ -28,13 +28,14 @@ public class UserProfileService {
 
     public Optional<AgencyProfile> findAgencyProfile(UUID userId) {
         return agencyRepository.findByUserId(userId)
-                .map(a -> new AgencyProfile(a.name(), a.description(), resolveMediaUrl(a.logoMediaId())));
+                .map(a -> new AgencyProfile(a.id(), a.name(), a.description(), resolveMediaUrl(a.logoMediaId())));
     }
 
     public Optional<AgentProfile> findAgentProfile(UUID userId) {
         return agentRepository.findByUserId(userId)
                 .map(agent -> new AgentProfile(
                         agent.agencyId(),
+                        agent.id(),
                         agent.reaNumber(),
                         resolveMediaUrl(agent.profilePhotoMediaId())
                 ));
@@ -52,6 +53,6 @@ public class UserProfileService {
                 });
     }
 
-    public record AgencyProfile(String name, String description, String logoUrl) {}
-    public record AgentProfile(UUID agencyId, String reaNumber, String profilePhotoUrl) {}
+    public record AgencyProfile(UUID agencyId, String name, String description, String logoUrl) {}
+    public record AgentProfile(UUID agencyId, UUID agentId, String reaNumber, String profilePhotoUrl) {}
 }

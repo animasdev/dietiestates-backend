@@ -215,6 +215,7 @@ components:
     UserInfoAgencyProfile:
       type: object
       properties:
+        agencyId: { type: string, format: uuid }
         name: { type: string }
         description: { type: string }
         logoUrl:
@@ -226,6 +227,7 @@ components:
       type: object
       properties:
         agencyId: { type: string, format: uuid }
+        agentId: { type: string, format: uuid }
         reaNumber: { type: string }
         profilePhotoUrl:
           type: string
