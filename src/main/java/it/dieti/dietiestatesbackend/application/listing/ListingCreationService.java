@@ -674,10 +674,11 @@ public class ListingCreationService {
                     });
         }
 
+        var isListingPublic = listingStatus!= null && listingStatus.code().equals(ListingStatusesEnum.PUBLISHED.getDescription());
         if (userId != null){
             var userRole = resolveUserRole(userId);
             boolean isPrivileged = userRole == RolesEnum.ADMIN || userRole == RolesEnum.SUPERADMIN;
-            if (!isPrivileged) {
+            if (!isPrivileged && !isListingPublic) {
                 try {
                     var agent = requireAgent(userId);
                     ensureOwnership(agent,listing);
@@ -686,7 +687,7 @@ public class ListingCreationService {
                 }
             }
         } else {
-            if (listingStatus== null || !listingStatus.code().equals(ListingStatusesEnum.PUBLISHED.getDescription())) {
+            if (!isListingPublic) {
                 throw NotFoundException.resourceNotFound(ANNUNCIO, listingId);
             }
         }
