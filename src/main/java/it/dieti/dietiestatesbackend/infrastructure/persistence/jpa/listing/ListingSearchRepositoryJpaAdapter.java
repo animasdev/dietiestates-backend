@@ -31,8 +31,12 @@ public class ListingSearchRepositoryJpaAdapter implements ListingSearchRepositor
         buildStatusCondition(filters, params, whereClauses);
         buildCityCondition(filters, params, whereClauses);
         buildPriceCondition(filters, params, whereClauses);
-        buildRoomsCondition(filters, params, whereClauses);
-        buildEnergyClassCondition(filters, params, whereClauses);
+        buildRoomsRangeCondition(filters, params, whereClauses);
+        buildSizeCondition(filters, params, whereClauses);
+        buildEnergyClassesCondition(filters, params, whereClauses);
+        buildFurnishedCondition(filters, params, whereClauses);
+        buildPetsAllowedCondition(filters, params, whereClauses);
+        buildPostalCodesCondition(filters, params, whereClauses);
         buildRadiusCondition(filters, params, whereClauses);
         buildHasPhotosCondition(filters, whereClauses);
         buildAgencyCondition(filters, params, whereClauses);
@@ -125,26 +129,90 @@ public class ListingSearchRepositoryJpaAdapter implements ListingSearchRepositor
         }
     }
 
-    private static void buildRoomsCondition(
+    private static void buildRoomsRangeCondition(
             SearchFilters filters,
             Map<String, Object> params,
             List<String> whereClauses
     ) {
-        if (filters.rooms() != null) {
-            whereClauses.add("l.rooms >= :rooms");
-            params.put("rooms", filters.rooms());
+        if (filters.minRooms() != null) {
+            whereClauses.add("l.rooms >= :minRooms");
+            params.put("minRooms", filters.minRooms());
+        }
+        if (filters.maxRooms() != null) {
+            whereClauses.add("l.rooms <= :maxRooms");
+            params.put("maxRooms", filters.maxRooms());
         }
     }
 
-    private static void buildEnergyClassCondition(
+    private static void buildSizeCondition(
             SearchFilters filters,
             Map<String, Object> params,
             List<String> whereClauses
     ) {
-        if (filters.normalizedEnergyClass() != null && !filters.normalizedEnergyClass().isBlank()) {
-            whereClauses.add("UPPER(l.energy_class) = :energyClass");
-            params.put("energyClass", filters.normalizedEnergyClass());
+        if (filters.minSqm() != null) {
+            whereClauses.add("l.size_sqm >= :minSqm");
+            params.put("minSqm", filters.minSqm());
         }
+        if (filters.maxSqm() != null) {
+            whereClauses.add("l.size_sqm <= :maxSqm");
+            params.put("maxSqm", filters.maxSqm());
+        }
+    }
+
+    private static void buildEnergyClassesCondition(
+            SearchFilters filters,
+            Map<String, Object> params,
+            List<String> whereClauses
+    ) {
+        if (filters.normalizedEnergyClasses() == null || filters.normalizedEnergyClasses().isEmpty()) {
+            return;
+        }
+        List<String> placeholders = new ArrayList<>();
+        for (int i = 0; i < filters.normalizedEnergyClasses().size(); i++) {
+            String key = "energyClass" + i;
+            placeholders.add(":" + key);
+            params.put(key, filters.normalizedEnergyClasses().get(i));
+        }
+        whereClauses.add("UPPER(l.energy_class) IN (" + String.join(",", placeholders) + ")");
+    }
+
+    private static void buildFurnishedCondition(
+            SearchFilters filters,
+            Map<String, Object> params,
+            List<String> whereClauses
+    ) {
+        if (filters.furnished() != null) {
+            whereClauses.add("l.furnished = :furnished");
+            params.put("furnished", filters.furnished());
+        }
+    }
+
+    private static void buildPetsAllowedCondition(
+            SearchFilters filters,
+            Map<String, Object> params,
+            List<String> whereClauses
+    ) {
+        if (filters.petsAllowed() != null) {
+            whereClauses.add("l.pets_allowed = :petsAllowed");
+            params.put("petsAllowed", filters.petsAllowed());
+        }
+    }
+
+    private static void buildPostalCodesCondition(
+            SearchFilters filters,
+            Map<String, Object> params,
+            List<String> whereClauses
+    ) {
+        if (filters.normalizedPostalCodes() == null || filters.normalizedPostalCodes().isEmpty()) {
+            return;
+        }
+        List<String> placeholders = new ArrayList<>();
+        for (int i = 0; i < filters.normalizedPostalCodes().size(); i++) {
+            String key = "postalCode" + i;
+            placeholders.add(":" + key);
+            params.put(key, filters.normalizedPostalCodes().get(i));
+        }
+        whereClauses.add("UPPER(l.postal_code) IN (" + String.join(",", placeholders) + ")");
     }
 
     private static void buildRadiusCondition(

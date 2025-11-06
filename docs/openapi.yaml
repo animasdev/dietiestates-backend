@@ -603,12 +603,38 @@ paths:
         - name: maxPrice
           in: query
           schema: { type: integer, minimum: 0 }
-        - name: rooms
+        - name: minRooms
           in: query
           schema: { type: integer, minimum: 0 }
-        - name: energyClass
+        - name: maxRooms
           in: query
-          schema: { type: string }
+          schema: { type: integer, minimum: 0 }
+        - name: minSqm
+          in: query
+          schema: { type: number, format: float, minimum: 0 }
+        - name: maxSqm
+          in: query
+          schema: { type: number, format: float, minimum: 0 }
+        - name: furnished
+          in: query
+          schema: { type: boolean }
+        - name: petsAllowed
+          in: query
+          schema: { type: boolean }
+        - name: energyClasses
+          in: query
+          schema:
+            type: array
+            items: { type: string }
+          style: form
+          explode: true
+        - name: postalCodes
+          in: query
+          schema:
+            type: array
+            items: { type: string }
+          style: form
+          explode: true
         - name: features
           in: query
           schema:

@@ -66,14 +66,20 @@ public class ListingSearchService {
             String city,
             Integer minPrice,
             Integer maxPrice,
-            Integer rooms,
-            String energyClass,
+            Integer minRooms,
+            Integer maxRooms,
+            java.math.BigDecimal minSqm,
+            java.math.BigDecimal maxSqm,
+            List<String> energyClasses,
             List<String> features,
+            List<String> postalCodes,
             String status,
             Double latitude,
             Double longitude,
             Integer radiusMeters,
             Boolean hasPhotos,
+            Boolean furnished,
+            Boolean petsAllowed,
             UUID agencyId,
             UUID ownerAgentId,
             Integer page,
@@ -104,8 +110,11 @@ public class ListingSearchService {
         var status = resolveStatus(query.status(), query.enforcePublishedOnly());
         var featureIds = resolveFeatureFilters(query.features());
         var normalizedCity = normalizeUpper(query.city());
-        var normalizedEnergyClass = normalizeUpper(query.energyClass());
+        var normalizedEnergyClasses = normalizeListUpper(query.energyClasses());
+        var normalizedPostalCodes = normalizeListUpper(query.postalCodes());
         validatePriceRange(query.minPrice(), query.maxPrice());
+        validateRoomsRange(query.minRooms(), query.maxRooms());
+        validateSqmRange(query.minSqm(), query.maxSqm());
         validateRadiusFilters(query.latitude(), query.longitude(), query.radiusMeters());
 
         var filters = new ListingSearchRepository.SearchFilters(
@@ -114,13 +123,19 @@ public class ListingSearchService {
                 normalizedCity,
                 query.minPrice(),
                 query.maxPrice(),
-                query.rooms(),
-                normalizedEnergyClass,
+                query.minRooms(),
+                query.maxRooms(),
+                query.minSqm(),
+                query.maxSqm(),
+                normalizedEnergyClasses,
+                normalizedPostalCodes,
                 featureIds,
                 query.latitude(),
                 query.longitude(),
                 query.radiusMeters(),
                 query.hasPhotos(),
+                query.furnished(),
+                query.petsAllowed(),
                 query.agencyId(),
                 query.ownerAgentId(),
                 sort.sortColumn(),
@@ -168,6 +183,30 @@ public class ListingSearchService {
         }
         if (minPrice != null && maxPrice != null && minPrice > maxPrice) {
             throw BadRequestException.forField("maxPrice", "Il parametro 'maxPrice' deve essere maggiore o uguale a 'minPrice'.");
+        }
+    }
+
+    private void validateRoomsRange(Integer minRooms, Integer maxRooms) {
+        if (minRooms != null && minRooms < 0) {
+            throw BadRequestException.forField("minRooms", "Il parametro 'minRooms' deve essere maggiore o uguale a 0.");
+        }
+        if (maxRooms != null && maxRooms < 0) {
+            throw BadRequestException.forField("maxRooms", "Il parametro 'maxRooms' deve essere maggiore o uguale a 0.");
+        }
+        if (minRooms != null && maxRooms != null && minRooms > maxRooms) {
+            throw BadRequestException.forField("maxRooms", "Il parametro 'maxRooms' deve essere maggiore o uguale a 'minRooms'.");
+        }
+    }
+
+    private void validateSqmRange(java.math.BigDecimal minSqm, java.math.BigDecimal maxSqm) {
+        if (minSqm != null && minSqm.compareTo(java.math.BigDecimal.ZERO) < 0) {
+            throw BadRequestException.forField("minSqm", "Il parametro 'minSqm' deve essere maggiore o uguale a 0.");
+        }
+        if (maxSqm != null && maxSqm.compareTo(java.math.BigDecimal.ZERO) < 0) {
+            throw BadRequestException.forField("maxSqm", "Il parametro 'maxSqm' deve essere maggiore o uguale a 0.");
+        }
+        if (minSqm != null && maxSqm != null && minSqm.compareTo(maxSqm) > 0) {
+            throw BadRequestException.forField("maxSqm", "Il parametro 'maxSqm' deve essere maggiore o uguale a 'minSqm'.");
         }
     }
 
@@ -362,6 +401,23 @@ public class ListingSearchService {
             return null;
         }
         return value.trim().toUpperCase(Locale.ROOT);
+    }
+
+    private List<String> normalizeListUpper(List<String> values) {
+        if (values == null || values.isEmpty()) {
+            return List.of();
+        }
+        var result = new ArrayList<String>();
+        var seen = new HashSet<String>();
+        for (String raw : values) {
+            if (raw == null) continue;
+            var norm = raw.trim().toUpperCase(Locale.ROOT);
+            if (norm.isEmpty()) continue;
+            if (seen.add(norm)) {
+                result.add(norm);
+            }
+        }
+        return result;
     }
 
     private record SortDescriptor(String sortColumn, boolean ascending) {}
