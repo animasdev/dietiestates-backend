@@ -20,13 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.net.URI;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.NoSuchElementException;
-import java.util.Objects;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -37,6 +31,7 @@ public class ListingMediaService {
     private static final String ID_FIELD = "id";
     public static final String LISTING = "listing";
     public static final String PROPRIETARIO = "proprietario";
+    public static final String PHOTO_IDS = "photoIds";
     private final ListingRepository listingRepository;
     private final MediaAssetService mediaAssetService;
     private final ListingMediaRepository listingMediaRepository;
@@ -238,6 +233,72 @@ public class ListingMediaService {
 
         // Also delete the underlying media asset (DB + storage) in a best-effort manner
         mediaAssetService.deleteAsset(mediaId);
+    }
+
+    @Transactional
+    public List<ListingPhotoView> reorderListingPhotos(UUID userId, UUID listingId, List<UUID> orderedPhotoIds) {
+        var userRole = resolveUserRole(userId);
+        boolean isPrivileged = userRole == RolesEnum.ADMIN || userRole == RolesEnum.SUPERADMIN;
+
+        var agent = isPrivileged ? null : agentRepository.findByUserId(userId)
+                .orElseThrow(AgentProfileRequiredException::new);
+        var listing = listingRepository.findById(listingId)
+                .orElseThrow(() -> new NoSuchElementException(LISTING));
+
+        if (!isPrivileged && !agent.id().equals(listing.ownerAgentId())) {
+                throw ForbiddenException.actionRequiresRole(PROPRIETARIO);
+
+        }
+
+        if (orderedPhotoIds == null || orderedPhotoIds.isEmpty()) {
+            throw BadRequestException.forField(PHOTO_IDS, "Elenco foto obbligatorio per il riordino.");
+        }
+
+        var existing = listingMediaRepository.findByListingId(listingId);
+        if (existing.isEmpty()) {
+            // nothing to reorder — treat as bad request to surface mismatch
+            throw BadRequestException.forField(PHOTO_IDS, "Nessuna foto esistente per l'annuncio.");
+        }
+
+        // Validate exact match and uniqueness
+        if (orderedPhotoIds.size() != existing.size()) {
+            throw BadRequestException.forField(PHOTO_IDS, "L'elenco deve contenere tutte e sole le foto correnti.");
+        }
+        Set<UUID> seen = new HashSet<>();
+        for (UUID pid : orderedPhotoIds) {
+            if (pid == null) {
+                throw BadRequestException.forField(PHOTO_IDS, "ID foto non valido.");
+            }
+            if (!seen.add(pid)) {
+                throw BadRequestException.forField(PHOTO_IDS, "ID foto duplicati non consentiti.");
+            }
+        }
+        var existingIds = existing.stream().map(ListingMedia::id).collect(Collectors.toSet());
+        if (!existingIds.equals(seen)) {
+            throw BadRequestException.forField(PHOTO_IDS, "Gli ID non corrispondono alle foto correnti del listing.");
+        }
+
+        // Phase 1: bulk-bump all current rows out of the target range to avoid unique constraint conflicts
+        // Use a large offset that won't collide with existing orders
+        final int OFFSET = 1000;
+        listingMediaRepository.bumpSortOrders(listingId, OFFSET);
+
+        // Phase 2: apply new contiguous order 1..N
+        int position = 1;
+        for (UUID pid : orderedPhotoIds) {
+            var lm = existing.stream().filter(e -> e.id().equals(pid)).findFirst().orElseThrow();
+            var updated = new ListingMedia(
+                    lm.id(),
+                    lm.listingId(),
+                    lm.mediaId(),
+                    position++,
+                    lm.createdAt(),
+                    null
+            );
+            listingMediaRepository.save(updated);
+        }
+
+        return getListingPhotos(listingId);
     }
 
     private RolesEnum resolveUserRole(UUID userId) {

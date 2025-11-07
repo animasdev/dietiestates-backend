@@ -12,13 +12,17 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Service;
+
+import java.net.URI;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.UUID;
 
 @Service
 public class ListingPhotosApiDelegateImpl implements ListingPhotosApiDelegate {
+    public static final String NO_LISTING_ID_MESSAGE = "nessun listing trovato per id '";
     private static final Logger log = LoggerFactory.getLogger(ListingPhotosApiDelegateImpl.class);
+    public static final String LISTING = "listing";
 
     private final ListingMediaService listingMediaService;
 
@@ -44,8 +48,8 @@ public class ListingPhotosApiDelegateImpl implements ListingPhotosApiDelegate {
             return new ResponseEntity<>(photos, HttpStatus.CREATED);
         } catch (NoSuchElementException exception) {
             log.warn(exception.getMessage());
-            if (exception.getMessage().equals("listing"))
-                throw BadRequestException.forField("id", "nessun listing trovato per id '" + id + "'.");
+            if (exception.getMessage().equals(LISTING))
+                throw BadRequestException.forField("id", NO_LISTING_ID_MESSAGE + id + "'.");
             else
                 throw BadRequestException.of(exception.getMessage());
         }
@@ -65,10 +69,35 @@ public class ListingPhotosApiDelegateImpl implements ListingPhotosApiDelegate {
             return new ResponseEntity<>(HttpStatus.NO_CONTENT);
         } catch (NoSuchElementException exception) {
             log.warn(exception.getMessage());
-            if ("listing".equals(exception.getMessage())) {
-                throw BadRequestException.forField("id", "nessun listing trovato per id '" + id + "'.");
+            if (LISTING.equals(exception.getMessage())) {
+                throw BadRequestException.forField("id", NO_LISTING_ID_MESSAGE + id + "'.");
             } else if ("photo".equals(exception.getMessage())) {
                 throw BadRequestException.forField("photoId", "nessuna foto trovata per id '" + photoId + "'.");
+            } else {
+                throw BadRequestException.of(exception.getMessage());
+            }
+        }
+    }
+
+    @Override
+    public ResponseEntity<List<ListingPhoto>> listingsIdPhotosOrderPut(UUID id, List<UUID> body) {
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        if (!(auth instanceof JwtAuthenticationToken jwtAuth)) {
+            log.warn("Tentativo reorder media senza token");
+            throw UnauthorizedException.bearerTokenMissing();
+        }
+        var userId = UUID.fromString(jwtAuth.getToken().getSubject());
+
+        try {
+            var views = listingMediaService.reorderListingPhotos(userId, id, body);
+            var result = views.stream()
+                    .map(v -> new ListingPhoto().id(v.id()).url(URI.create(v.publicUrl())).position(v.position()))
+                    .toList();
+            return new ResponseEntity<>(result, HttpStatus.OK);
+        } catch (NoSuchElementException exception) {
+            log.warn(exception.getMessage());
+            if (LISTING.equals(exception.getMessage())) {
+                throw BadRequestException.forField("id", NO_LISTING_ID_MESSAGE + id + "'.");
             } else {
                 throw BadRequestException.of(exception.getMessage());
             }

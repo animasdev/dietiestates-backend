@@ -872,6 +872,53 @@ paths:
                 type: array
                 items: { $ref: '#/components/schemas/ListingPhoto' }
 
+  /listings/{id}/photos/order:
+    put:
+      tags: [Listing Photos]
+      summary: Replace the order of listing photos
+      description: |
+        Replaces the complete order of photos for the listing. The body must contain all
+        current photo IDs for the listing exactly once, in the desired order. Idempotent.
+        Requires ownership by the listing's agent or ADMIN/SUPERADMIN role.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              minItems: 1
+              items: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Updated ordered photos
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/ListingPhoto' }
+        '400':
+          description: Validation error (missing/unknown/duplicate photo IDs, mismatch with current set)
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '401':
+          description: Unauthorized
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '403':
+          description: Forbidden (not owner and not privileged role)
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+
   /listings/{id}/photos/{photoId}:
     delete:
       tags: [Listing Photos]

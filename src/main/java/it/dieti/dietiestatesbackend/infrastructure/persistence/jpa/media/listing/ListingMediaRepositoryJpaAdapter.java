@@ -83,6 +83,11 @@ public class ListingMediaRepositoryJpaAdapter implements ListingMediaRepository 
         }
     }
 
+    @Override
+    public void bumpSortOrders(UUID listingId, int offset) {
+        repository.bumpAllByListing(listingId, offset);
+    }
+
 
     private ListingMedia toDomain(ListingMediaEntity entity) {
         return new ListingMedia(

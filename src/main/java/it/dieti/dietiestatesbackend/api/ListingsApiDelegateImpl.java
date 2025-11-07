@@ -195,7 +195,7 @@ public class ListingsApiDelegateImpl implements ListingsApiDelegate {
 
         try {
             var listing = listingCreationService.createListingForUser(userId, command);
-            return ResponseEntity.status(HttpStatus.CREATED).body(getFullListing(listing.id()));
+            return ResponseEntity.status(HttpStatus.CREATED).body(getFullListing(listing.id(),userId));
         } catch (ListingTypeNotSupportedException ex) {
             var acceptedTypes = Arrays.stream(ListingCreate.ListingTypeEnum.values())
                     .map(ListingCreate.ListingTypeEnum::getValue)
@@ -279,7 +279,7 @@ public class ListingsApiDelegateImpl implements ListingsApiDelegate {
         );
 
         var updatedListing = listingCreationService.updateListingForUser(userId, id, command);
-        return ResponseEntity.status(HttpStatus.OK).body(getFullListing(updatedListing.id()));
+        return ResponseEntity.status(HttpStatus.OK).body(getFullListing(updatedListing.id(),userId));
     }
 
     @Override

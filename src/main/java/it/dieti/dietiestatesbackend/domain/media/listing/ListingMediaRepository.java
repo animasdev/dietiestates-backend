@@ -11,4 +11,5 @@ public interface ListingMediaRepository {
     List<ListingMedia> findByMediaId(UUID mediaId);
     Integer findNextOrderByListingId(UUID listingId);
     void delete(UUID id);
+    void bumpSortOrders(UUID listingId, int offset);
 }
