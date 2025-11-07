@@ -32,6 +32,8 @@ public class ModerationService {
             RolesEnum.AGENT.name()
     );
     public static final String LISTING_ID_IS_REQUIRED = "listingId is required";
+    public static final String PERFORMED_BY_USER_ID_IS_REQUIRED = "performedByUserId is required";
+    public static final String PERFORMED_BY_ROLE_IS_REQUIRED = "performedByRole is required";
 
     private final ModerationActionRepository moderationActionRepository;
     private final ListingRepository listingRepository;
@@ -56,8 +58,8 @@ public class ModerationService {
 
     public void recordListingDeletion(UUID listingId, UUID performedByUserId, RolesEnum performedByRole, String reason) {
         Objects.requireNonNull(listingId, LISTING_ID_IS_REQUIRED);
-        Objects.requireNonNull(performedByUserId, "performedByUserId is required");
-        Objects.requireNonNull(performedByRole, "performedByRole is required");
+        Objects.requireNonNull(performedByUserId, PERFORMED_BY_USER_ID_IS_REQUIRED);
+        Objects.requireNonNull(performedByRole, PERFORMED_BY_ROLE_IS_REQUIRED);
 
         var sanitizedReason = StringUtils.hasText(reason) ? reason.trim() : null;
         var action = new ModerationAction(
@@ -74,8 +76,8 @@ public class ModerationService {
 
     public void recordListingRestoration(UUID listingId, UUID performedByUserId, RolesEnum performedByRole) {
         Objects.requireNonNull(listingId, LISTING_ID_IS_REQUIRED);
-        Objects.requireNonNull(performedByUserId, "performedByUserId is required");
-        Objects.requireNonNull(performedByRole, "performedByRole is required");
+        Objects.requireNonNull(performedByUserId, PERFORMED_BY_USER_ID_IS_REQUIRED);
+        Objects.requireNonNull(performedByRole, PERFORMED_BY_ROLE_IS_REQUIRED);
 
         var action = new ModerationAction(
                 null,
@@ -84,6 +86,24 @@ public class ModerationService {
                 performedByRole,
                 ModerationActionType.RESTORE,
                 null,
+                OffsetDateTime.now()
+        );
+        moderationActionRepository.save(action);
+    }
+
+    public void recordListingEdit(UUID listingId, UUID performedByUserId, RolesEnum performedByRole, String reason) {
+        Objects.requireNonNull(listingId, LISTING_ID_IS_REQUIRED);
+        Objects.requireNonNull(performedByUserId, PERFORMED_BY_USER_ID_IS_REQUIRED);
+        Objects.requireNonNull(performedByRole, PERFORMED_BY_ROLE_IS_REQUIRED);
+
+        var sanitizedReason = StringUtils.hasText(reason) ? reason.trim() : null;
+        var action = new ModerationAction(
+                null,
+                listingId,
+                performedByUserId,
+                performedByRole,
+                ModerationActionType.EDIT,
+                sanitizedReason,
                 OffsetDateTime.now()
         );
         moderationActionRepository.save(action);

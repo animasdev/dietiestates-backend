@@ -61,6 +61,7 @@ public class ListingCreationService {
     private static final String SECURITY_DEPOSIT_NON_NEGATIVE_MESSAGE = "Il campo 'securityDepositCents' deve essere maggiore o uguale a zero.";
     private static final String CONDO_FEE_NON_NEGATIVE_MESSAGE = "Il campo 'condoFeeCents' deve essere maggiore o uguale a zero.";
     public static final String ANNUNCIO = "Annuncio";
+    public static final String REASON = "reason";
 
     private final ListingRepository listingRepository;
     private final ListingTypeRepository listingTypeRepository;
@@ -266,10 +267,10 @@ public class ListingCreationService {
 
         var sanitizedReason = StringUtils.hasText(reason) ? reason.trim() : null;
         if (sanitizedReason != null && sanitizedReason.length() > 500) {
-            throw BadRequestException.forField("reason", "Il campo 'reason' non può superare i 500 caratteri.");
+            throw BadRequestException.forField(REASON, "Il campo 'reason' non può superare i 500 caratteri.");
         }
         if (isPrivileged && !StringUtils.hasText(sanitizedReason)) {
-            throw BadRequestException.forField("reason", "Il campo 'reason' è obbligatorio per gli amministratori.");
+            throw BadRequestException.forField(REASON, "Il campo 'reason' è obbligatorio per gli amministratori.");
         }
 
         Agent agent = null;
@@ -441,6 +442,172 @@ public class ListingCreationService {
         var savedListing = listingRepository.save(restoredListing);
         moderationService.recordListingRestoration(savedListing.id(), userId, userRole);
         return savedListing;
+    }
+
+    @Transactional
+    public Listing publishListing(UUID userId, UUID listingId) {
+        Objects.requireNonNull(userId, USER_ID_REQUIRED_MESSAGE);
+        Objects.requireNonNull(listingId, LISTING_ID_REQUIRED_MESSAGE);
+
+        var listing = requireListing(listingId);
+        var userRole = resolveUserRole(userId);
+        if (userRole == null) {
+            log.warn("User {} senza ruolo durante publish annuncio {}", userId, listingId);
+            throw UnauthorizedException.userNotFound();
+        }
+        boolean isPrivileged = userRole == RolesEnum.ADMIN || userRole == RolesEnum.SUPERADMIN;
+        if (!isPrivileged) {
+            var agent = requireAgent(userId);
+            ensureOwnership(agent, listing);
+        } else {
+            log.info("Privileged user {} with role {} published listing {}", userId, userRole, listingId);
+        }
+
+        var currentStatus = listingStatusRepository.findById(listing.statusId()).orElseThrow(() -> {
+            log.error("Annuncio {} con status {} inesistente durante publish", listingId, listing.statusId());
+            return new InternalServerErrorException(INTERNAL_ERROR_MESSAGE);
+        });
+
+        var currentCode = currentStatus.code();
+        if (ListingStatusesEnum.PUBLISHED.getDescription().equals(currentCode)) {
+            return listing; // idempotente
+        }
+        if (!ListingStatusesEnum.DRAFT.getDescription().equals(currentCode)) {
+            throw BadRequestException.of("Transizione non valida: solo gli annunci in stato DRAFT possono essere pubblicati.");
+        }
+
+        // Validazioni minime per la pubblicazione (da considerare)
+
+        var publishedStatus = listingStatusRepository.findByCode(ListingStatusesEnum.PUBLISHED.getDescription()).orElseThrow(() -> {
+            log.error("Stato PUBLISHED non configurato durante publish");
+            return new InternalServerErrorException(INTERNAL_ERROR_MESSAGE);
+        });
+
+        var now = OffsetDateTime.now();
+        var updated = new Listing(
+                listing.id(),
+                listing.agencyId(),
+                listing.ownerAgentId(),
+                listing.listingTypeId(),
+                publishedStatus.id(),
+                listing.title(),
+                listing.description(),
+                listing.priceCents(),
+                listing.currency(),
+                listing.sizeSqm(),
+                listing.rooms(),
+                listing.floor(),
+                listing.energyClass(),
+                listing.contractDescription(),
+                listing.securityDepositCents(),
+                listing.furnished(),
+                listing.condoFeeCents(),
+                listing.petsAllowed(),
+                listing.addressLine(),
+                listing.city(),
+                listing.postalCode(),
+                listing.geo(),
+                listing.pendingDeleteUntil(),
+                listing.deletedAt(),
+                listing.publishedAt() != null ? listing.publishedAt() : now,
+                listing.createdAt(),
+                now
+        );
+        return listingRepository.save(updated);
+    }
+
+    @Transactional
+    public Listing moveListingToDraft(UUID userId, UUID listingId, String reason) {
+        Objects.requireNonNull(userId, USER_ID_REQUIRED_MESSAGE);
+        Objects.requireNonNull(listingId, LISTING_ID_REQUIRED_MESSAGE);
+
+        var listing = requireListing(listingId);
+        var userRole = resolveUserRole(userId);
+        if (userRole == null) {
+            log.warn("User {} senza ruolo durante draft annuncio {}", userId, listingId);
+            throw UnauthorizedException.userNotFound();
+        }
+        boolean isPrivileged = userRole == RolesEnum.ADMIN || userRole == RolesEnum.SUPERADMIN;
+
+        var sanitizedReason = reason != null ? reason.trim() : null;
+        if (isPrivileged && (sanitizedReason == null || sanitizedReason.isEmpty())) {
+            throw BadRequestException.forField(REASON, "Il campo 'reason' è obbligatorio per gli amministratori.");
+        }
+        if (sanitizedReason != null && sanitizedReason.length() > 500) {
+            throw BadRequestException.forField(REASON, "Il campo 'reason' non può superare i 500 caratteri.");
+        }
+
+        if (!isPrivileged) {
+            var agent = requireAgent(userId);
+            ensureOwnership(agent, listing);
+        } else {
+            log.info("Privileged user {} with role {} moved listing {} to DRAFT", userId, userRole, listingId);
+        }
+
+        var currentStatus = listingStatusRepository.findById(listing.statusId()).orElseThrow(() -> {
+            log.error("Annuncio {} con status {} inesistente durante draft", listingId, listing.statusId());
+            return new InternalServerErrorException(INTERNAL_ERROR_MESSAGE);
+        });
+        var currentCode = currentStatus.code();
+
+        if (ListingStatusesEnum.DRAFT.getDescription().equals(currentCode)) {
+            return listing; // idempotente
+        }
+        if (!ListingStatusesEnum.PUBLISHED.getDescription().equals(currentCode)) {
+            throw BadRequestException.of("Solo gli annunci in stato PUBLISHED possono essere portati in DRAFT.");
+        }
+
+        var draftStatus = listingStatusRepository.findByCode(ListingStatusesEnum.DRAFT.getDescription()).orElseThrow(() -> {
+            log.error("Stato DRAFT non configurato durante draft");
+            return new InternalServerErrorException(INTERNAL_ERROR_MESSAGE);
+        });
+
+        var now = OffsetDateTime.now();
+        var updated = new Listing(
+                listing.id(),
+                listing.agencyId(),
+                listing.ownerAgentId(),
+                listing.listingTypeId(),
+                draftStatus.id(),
+                listing.title(),
+                listing.description(),
+                listing.priceCents(),
+                listing.currency(),
+                listing.sizeSqm(),
+                listing.rooms(),
+                listing.floor(),
+                listing.energyClass(),
+                listing.contractDescription(),
+                listing.securityDepositCents(),
+                listing.furnished(),
+                listing.condoFeeCents(),
+                listing.petsAllowed(),
+                listing.addressLine(),
+                listing.city(),
+                listing.postalCode(),
+                listing.geo(),
+                listing.pendingDeleteUntil(),
+                listing.deletedAt(),
+                listing.publishedAt(),
+                listing.createdAt(),
+                now
+        );
+        var saved = listingRepository.save(updated);
+        moderationService.recordListingEdit(saved.id(), userId, userRole, sanitizedReason);
+
+        if (isPrivileged) {
+            var agent = agentRepository.findById(listing.ownerAgentId()).orElseThrow(() -> {
+                log.error("Profilo agente {} non trovato durante draft listing {}", listing.ownerAgentId(), listingId);
+                return new InternalServerErrorException(INTERNAL_ERROR_MESSAGE);
+            });
+            var agentUser = userRepository.findById(agent.userId()).orElseThrow(() -> {
+                log.error("Utente {} non trovato durante draft listing {}", agent.userId(), listingId);
+                return new InternalServerErrorException(INTERNAL_ERROR_MESSAGE);
+            });
+            notificationService.sendMoveToDraft(agentUser.email(), listing.title(), listingId, sanitizedReason);
+        }
+
+        return saved;
     }
 
     private Agent requireAgent(UUID userId) {

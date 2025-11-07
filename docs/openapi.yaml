@@ -187,6 +187,13 @@ components:
           type: string
           maxLength: 500
           description: Motivo della cancellazione. Obbligatorio per amministratori, opzionale per gli altri ruoli.
+    DraftRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+          maxLength: 500
+          description: Motivo del passaggio in DRAFT. Obbligatorio per amministratori, opzionale per l'agente proprietario.
     ModerationAction:
       type: object
       required: [id, listingId, performedByUserId, performedByRole, actionType, createdAt]
@@ -796,6 +803,65 @@ paths:
           content:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Problem' }
+
+  /listings/{id}/publish:
+    post:
+      tags: [Listings]
+      summary: Pubblica un annuncio (DRAFT → PUBLISHED)
+      description: Converte un annuncio in stato DRAFT in PUBLISHED. Idempotente se già PUBLISHED. Richiede autenticazione e proprietà dell'annuncio oppure ruolo ADMIN/SUPERADMIN.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Annuncio pubblicato
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Listing' }
+        '400':
+          description: Validazione non superata o transizione non valida
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '401': { description: Richiesta non autenticata }
+        '403': { description: Permesso negato }
+        '404': { description: Annuncio non trovato }
+
+  /listings/{id}/draft:
+    post:
+      tags: [Listings]
+      summary: Porta un annuncio a DRAFT (PUBLISHED → DRAFT)
+      description: Porta un annuncio pubblicato in stato DRAFT. Idempotente se già DRAFT. Per gli amministratori il campo 'reason' è obbligatorio.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DraftRequest' }
+      responses:
+        '200':
+          description: Annuncio in stato DRAFT
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Listing' }
+        '400':
+          description: Validazione non superata o transizione non valida
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '401': { description: Richiesta non autenticata }
+        '403': { description: Permesso negato }
+        '404': { description: Annuncio non trovato }
 
   /moderation/listings:
     get:

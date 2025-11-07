@@ -59,6 +59,21 @@ public class NotificationService {
         dispatch(agentEmail, subject, bodyBuilder.toString());
     }
 
+    public void sendMoveToDraft(String agentEmail, String listingTitle, UUID listingId, @Nullable String reason) {
+        var subject = "Annuncio spostato in DRAFT: \"" + listingTitle + "\"";
+        var bodyBuilder = new StringBuilder()
+                .append("L'annuncio \"").append(listingTitle)
+                .append("\" (ID ").append(listingId)
+                .append(") è stato riportato allo stato DRAFT da un amministratore.\n\n");
+
+        if (StringUtils.hasText(reason)) {
+            bodyBuilder.append("Motivazione: ").append(reason).append("\n\n");
+        }
+
+        bodyBuilder.append("Puoi modificare l'annuncio e ripubblicarlo quando pronto.\n\n-- Team DietiEstates");
+        dispatch(agentEmail, subject, bodyBuilder.toString());
+    }
+
     private void dispatch(String recipient, String subject, String text) {
         if (properties.isAsyncEnabled()) {
             dispatchService.sendEmailAsync(recipient, subject, text);

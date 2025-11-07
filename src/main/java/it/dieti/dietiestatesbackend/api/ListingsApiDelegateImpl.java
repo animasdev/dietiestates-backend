@@ -296,7 +296,7 @@ public class ListingsApiDelegateImpl implements ListingsApiDelegate {
         var userId = UUID.fromString(jwtAuth.getToken().getSubject());
         var listing = listingCreationService.requestDeletion(userId, id,deleteRequest.getReason());
         log.info("Listing {} contrassegnato per cancellazione da user {}", id, userId);
-        return ResponseEntity.status(HttpStatus.OK).body(getFullListing(listing.id()));
+        return ResponseEntity.status(HttpStatus.OK).body(getFullListing(listing.id(),userId));
     }
 
     @Override
@@ -312,7 +312,38 @@ public class ListingsApiDelegateImpl implements ListingsApiDelegate {
         var userId = UUID.fromString(jwtAuth.getToken().getSubject());
         var listing = listingCreationService.restoreListing(userId, id);
         log.info("Listing {} ripristinato da user {}", id, userId);
-        return ResponseEntity.status(HttpStatus.OK).body(getFullListing(listing.id()));
+        return ResponseEntity.status(HttpStatus.OK).body(getFullListing(listing.id(),userId));
+    }
+
+    // Will be wired after OpenAPI codegen updates the interface
+    @Override
+    public ResponseEntity<Listing> listingsIdPublishPost(
+            @Parameter(name = "id", required = true, in = ParameterIn.PATH) UUID id
+    ) {
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        if (!(auth instanceof JwtAuthenticationToken jwtAuth)) {
+            log.warn("Accesso non autorizzato a listingsIdPublishPost: token mancante");
+            throw UnauthorizedException.bearerTokenMissing();
+        }
+        var userId = UUID.fromString(jwtAuth.getToken().getSubject());
+        var listing = listingCreationService.publishListing(userId, id);
+        return ResponseEntity.status(HttpStatus.OK).body(getFullListing(listing.id(), userId));
+    }
+
+    // Will be wired after OpenAPI codegen updates the interface
+    @Override
+    public ResponseEntity<Listing> listingsIdDraftPost(
+            @Parameter(name = "id", required = true, in = ParameterIn.PATH) UUID id,
+            it.dieti.dietiestatesbackend.api.model.DraftRequest draftRequest
+    ) {
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        if (!(auth instanceof JwtAuthenticationToken jwtAuth)) {
+            log.warn("Accesso non autorizzato a listingsIdDraftPost: token mancante");
+            throw UnauthorizedException.bearerTokenMissing();
+        }
+        var userId = UUID.fromString(jwtAuth.getToken().getSubject());
+        var listing = listingCreationService.moveListingToDraft(userId, id, draftRequest != null ? draftRequest.getReason() : null);
+        return ResponseEntity.status(HttpStatus.OK).body(getFullListing(listing.id(), userId));
     }
 
     private Listing getFullListing(UUID id, UUID userId) {
@@ -332,9 +363,6 @@ public class ListingsApiDelegateImpl implements ListingsApiDelegate {
                 UsersMappers.toApi(agentProfile),
                 UsersMappers.toApi(agencyProfile)
         );
-    }
-    private Listing getFullListing(UUID id) {
-       return getFullListing(id, null);
     }
 
     private void requireField(Object value, String field) {
