@@ -22,6 +22,18 @@ public class NotificationProperties {
      */
     private String fromName = "DietiEstates";
 
+    /**
+     * Enable asynchronous dispatch of emails via @Async executor.
+     */
+    private boolean asyncEnabled = false;
+
+    /**
+     * Executor configuration for async email dispatch.
+     */
+    private int executorCorePoolSize = 2;
+    private int executorMaxPoolSize = 4;
+    private int executorQueueCapacity = 100;
+
     public boolean isEnabled() {
         return enabled;
     }
@@ -44,6 +56,38 @@ public class NotificationProperties {
 
     public void setFromName(String fromName) {
         this.fromName = fromName;
+    }
+
+    public boolean isAsyncEnabled() {
+        return asyncEnabled;
+    }
+
+    public void setAsyncEnabled(boolean asyncEnabled) {
+        this.asyncEnabled = asyncEnabled;
+    }
+
+    public int getExecutorCorePoolSize() {
+        return executorCorePoolSize;
+    }
+
+    public void setExecutorCorePoolSize(int executorCorePoolSize) {
+        this.executorCorePoolSize = executorCorePoolSize;
+    }
+
+    public int getExecutorMaxPoolSize() {
+        return executorMaxPoolSize;
+    }
+
+    public void setExecutorMaxPoolSize(int executorMaxPoolSize) {
+        this.executorMaxPoolSize = executorMaxPoolSize;
+    }
+
+    public int getExecutorQueueCapacity() {
+        return executorQueueCapacity;
+    }
+
+    public void setExecutorQueueCapacity(int executorQueueCapacity) {
+        this.executorQueueCapacity = executorQueueCapacity;
     }
 
     public String formattedFromAddress() {

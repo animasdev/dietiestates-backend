@@ -47,6 +47,7 @@ app:
       # BCrypt strength (cost). 10..12 commonly used; higher is slower but stronger
       strength: 10
   notification:
+    async-enabled: true
     enabled: ${MAIL_ENABLED:false}
     fromEmail: ${MAIL_FROM:noreply@dietiestates.it}
     fromName: ${MAIL_FROM_NAME:DietiEstates}
