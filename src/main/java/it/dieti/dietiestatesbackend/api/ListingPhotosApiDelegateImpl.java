@@ -50,4 +50,28 @@ public class ListingPhotosApiDelegateImpl implements ListingPhotosApiDelegate {
                 throw BadRequestException.of(exception.getMessage());
         }
     }
+
+    @Override
+    public ResponseEntity<Void> listingsIdPhotosPhotoIdDelete(UUID id, UUID photoId) {
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        if (!(auth instanceof JwtAuthenticationToken jwtAuth)) {
+            log.warn("Tentativo delete media senza token");
+            throw UnauthorizedException.bearerTokenMissing();
+        }
+        var userId = UUID.fromString(jwtAuth.getToken().getSubject());
+
+        try {
+            listingMediaService.removeListingPhoto(userId, id, photoId);
+            return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+        } catch (NoSuchElementException exception) {
+            log.warn(exception.getMessage());
+            if ("listing".equals(exception.getMessage())) {
+                throw BadRequestException.forField("id", "nessun listing trovato per id '" + id + "'.");
+            } else if ("photo".equals(exception.getMessage())) {
+                throw BadRequestException.forField("photoId", "nessuna foto trovata per id '" + photoId + "'.");
+            } else {
+                throw BadRequestException.of(exception.getMessage());
+            }
+        }
+    }
 }

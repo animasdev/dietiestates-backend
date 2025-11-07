@@ -8,6 +8,7 @@ import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.stereotype.Repository;
 
 @Repository
@@ -71,6 +72,15 @@ public class ListingMediaRepositoryJpaAdapter implements ListingMediaRepository 
         return repository.findFirstByListing_IdOrderBySortOrderDesc(listingId)
                 .map(entity -> entity.getSortOrder() + 1)
                 .orElse(1);
+    }
+
+    @Override
+    public void delete(UUID id) {
+        try {
+            repository.deleteById(id);
+        } catch (EmptyResultDataAccessException ignored) {
+            // idempotent delete: ignore if not found
+        }
     }
 
 

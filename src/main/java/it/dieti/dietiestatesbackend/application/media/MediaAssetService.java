@@ -101,4 +101,33 @@ public class MediaAssetService {
                 });
         return mediaAssetRepository.getByIdAndCategory(id,category.id());
     }
+
+    /**
+     * Deletes a media asset and attempts to remove the underlying stored file.
+     * Idempotent: if the asset does not exist, it quietly returns.
+     */
+    public void deleteAsset(UUID mediaId) {
+        if (mediaId == null) {
+            return;
+        }
+        var assetOpt = mediaAssetRepository.findById(mediaId);
+        if (assetOpt.isEmpty()) {
+            return;
+        }
+        var asset = assetOpt.get();
+        try {
+            if (asset.storagePath() != null) {
+                storageClient.delete(asset.storagePath());
+            }
+        } catch (RuntimeException ex) {
+            // Best-effort storage cleanup: log and continue with DB delete
+            log.warn("Failed to delete media file at {} for asset {}", asset.storagePath(), mediaId, ex);
+        }
+        try {
+            mediaAssetRepository.deleteById(mediaId);
+        } catch (RuntimeException ex) {
+            // Idempotent behavior: ignore if already gone
+            log.debug("Media asset {} already deleted or not found", mediaId, ex);
+        }
+    }
 }

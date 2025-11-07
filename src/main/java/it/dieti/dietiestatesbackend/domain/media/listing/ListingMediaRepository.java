@@ -10,4 +10,5 @@ public interface ListingMediaRepository {
     List<ListingMedia> findByListingId(UUID listingId);
     List<ListingMedia> findByMediaId(UUID mediaId);
     Integer findNextOrderByListingId(UUID listingId);
+    void delete(UUID id);
 }

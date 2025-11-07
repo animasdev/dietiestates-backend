@@ -10,6 +10,9 @@ import it.dieti.dietiestatesbackend.domain.listing.ListingRepository;
 import it.dieti.dietiestatesbackend.domain.media.MediaAssetRepository;
 import it.dieti.dietiestatesbackend.domain.media.listing.ListingMedia;
 import it.dieti.dietiestatesbackend.domain.media.listing.ListingMediaRepository;
+import it.dieti.dietiestatesbackend.domain.user.UserRepository;
+import it.dieti.dietiestatesbackend.domain.user.role.RoleRepository;
+import it.dieti.dietiestatesbackend.domain.user.role.RolesEnum;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -32,22 +35,30 @@ public class ListingMediaService {
     private static final Logger log = LoggerFactory.getLogger(ListingMediaService.class);
     private static final String POSITIONS_FIELD = "positions";
     private static final String ID_FIELD = "id";
+    public static final String LISTING = "listing";
+    public static final String PROPRIETARIO = "proprietario";
     private final ListingRepository listingRepository;
     private final MediaAssetService mediaAssetService;
     private final ListingMediaRepository listingMediaRepository;
     private final MediaAssetRepository mediaAssetRepository;
     private final AgentRepository agentRepository;
+    private final UserRepository userRepository;
+    private final RoleRepository roleRepository;
 
     public ListingMediaService(ListingRepository listingRepository,
                                MediaAssetService mediaAssetService,
                                ListingMediaRepository listingMediaRepository,
                                MediaAssetRepository mediaAssetRepository,
-                               AgentRepository agentRepository) {
+                               AgentRepository agentRepository,
+                               UserRepository userRepository,
+                               RoleRepository roleRepository) {
         this.listingRepository = listingRepository;
         this.mediaAssetService = mediaAssetService;
         this.listingMediaRepository = listingMediaRepository;
         this.mediaAssetRepository = mediaAssetRepository;
         this.agentRepository = agentRepository;
+        this.userRepository = userRepository;
+        this.roleRepository = roleRepository;
     }
 
     /**
@@ -62,12 +73,33 @@ public class ListingMediaService {
         var agent = agentRepository.findByUserId(userId)
                 .orElseThrow(AgentProfileRequiredException::new);
         var listing = listingRepository.findById(listingId)
-                .orElseThrow(() -> new NoSuchElementException("listing"));
+                .orElseThrow(() -> new NoSuchElementException(LISTING));
 
         if (!agent.id().equals(listing.ownerAgentId())) {
-            throw ForbiddenException.actionRequiresRole("proprietario");
+            throw ForbiddenException.actionRequiresRole(PROPRIETARIO);
+        }
+        // Validate positions before any upload occurs
+        if (positions == null || files == null || positions.size() != files.size()) {
+            throw BadRequestException.forField(POSITIONS_FIELD, "Numero di posizioni non coerente con i file.");
         }
 
+        Set<Integer> seen = new HashSet<>();
+        for (Integer pos : positions) {
+            if (pos == null || pos < 1) {
+                throw BadRequestException.forField(POSITIONS_FIELD, "Le posizioni devono essere valori interi positivi univoci.");
+            }
+            if (!seen.add(pos)) {
+                throw BadRequestException.forField(POSITIONS_FIELD, "Le posizioni nella richiesta devono essere univoche.");
+            }
+        }
+        var existingPositions = listingMediaRepository.findByListingId(listingId).stream()
+                .map(ListingMedia::sortOrder)
+                .collect(Collectors.toSet());
+        for (Integer pos : seen) {
+            if (existingPositions.contains(pos)) {
+                throw BadRequestException.forField(POSITIONS_FIELD, "Posizione già assegnata a una foto esistente.");
+            }
+        }
 
         List<ListingPhoto> photos = new ArrayList<>();
         for (int index = 0; index < files.size(); index++) {
@@ -96,10 +128,10 @@ public class ListingMediaService {
         var agent = agentRepository.findByUserId(userId)
                 .orElseThrow(AgentProfileRequiredException::new);
         var listing = listingRepository.findById(listingId)
-                .orElseThrow(() -> new NoSuchElementException("listing"));
+                .orElseThrow(() -> new NoSuchElementException(LISTING));
 
         if (!agent.id().equals(listing.ownerAgentId())) {
-            throw ForbiddenException.actionRequiresRole("proprietario");
+            throw ForbiddenException.actionRequiresRole(PROPRIETARIO);
         }
 
         if (photos == null || photos.isEmpty()) {
@@ -175,4 +207,53 @@ public class ListingMediaService {
     }
 
     public record ListingPhotoView(UUID id, String publicUrl, Integer position) {}
+
+    public void removeListingPhoto(UUID userId, UUID listingId, UUID listingPhotoId) {
+        var userRole = resolveUserRole(userId);
+        boolean isPrivileged = userRole == RolesEnum.ADMIN || userRole == RolesEnum.SUPERADMIN;
+
+        var agent = isPrivileged ? null : agentRepository.findByUserId(userId)
+                .orElseThrow(AgentProfileRequiredException::new);
+        var listing = listingRepository.findById(listingId)
+                .orElseThrow(() -> new NoSuchElementException(LISTING));
+
+        if (!isPrivileged) {
+            if (!agent.id().equals(listing.ownerAgentId())) {
+                throw ForbiddenException.actionRequiresRole(PROPRIETARIO);
+            }
+        } else {
+            log.info("Privileged user {} with role {} removed photo {} from listing {}", userId, userRole, listingPhotoId, listingId);
+        }
+
+        var listingMedia = listingMediaRepository.findById(listingPhotoId)
+                .orElseThrow(() -> new NoSuchElementException("photo"));
+
+        if (!listingMedia.listingId().equals(listingId)) {
+            throw BadRequestException.forField("photoId", "la foto non appartiene al listing indicato");
+        }
+
+        // Keep reference before deleting the join
+        var mediaId = listingMedia.mediaId();
+        listingMediaRepository.delete(listingPhotoId);
+
+        // Also delete the underlying media asset (DB + storage) in a best-effort manner
+        mediaAssetService.deleteAsset(mediaId);
+    }
+
+    private RolesEnum resolveUserRole(UUID userId) {
+        var userOpt = userRepository.findById(userId);
+        if (userOpt.isEmpty()) {
+            return null;
+        }
+        var roleOpt = roleRepository.findById(userOpt.get().roleId());
+        if (roleOpt.isEmpty()) {
+            return null;
+        }
+        try {
+            return RolesEnum.valueOf(roleOpt.get().code());
+        } catch (IllegalArgumentException ex) {
+            log.warn("Unsupported role code {} for user {}", roleOpt.get().code(), userId, ex);
+            return null;
+        }
+    }
 }
