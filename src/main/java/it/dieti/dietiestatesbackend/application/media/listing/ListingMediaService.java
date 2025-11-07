@@ -93,11 +93,6 @@ public class ListingMediaService {
 
     @Transactional
     public List<ListingPhoto> attachListingPhotos(UUID userId, UUID listingId, List<ListingPhoto> photos) {
-        if (photos == null || photos.isEmpty()) {
-            log.warn("Tentativo di associazione foto a listing {} da user {} senza foto", listingId, userId);
-            throw BadRequestException.forField("photos", "array 'photos' è vuoto");
-        }
-
         var agent = agentRepository.findByUserId(userId)
                 .orElseThrow(AgentProfileRequiredException::new);
         var listing = listingRepository.findById(listingId)
@@ -105,6 +100,11 @@ public class ListingMediaService {
 
         if (!agent.id().equals(listing.ownerAgentId())) {
             throw ForbiddenException.actionRequiresRole("proprietario");
+        }
+
+        if (photos == null || photos.isEmpty()) {
+            log.warn("Tentativo di associazione foto a listing {} da user {} senza foto", listingId, userId);
+            throw BadRequestException.forField("photos", "array 'photos' è vuoto");
         }
 
         validatePhotoList(listingId,photos,userId);
