@@ -188,25 +188,7 @@ public class UserDirectoryService {
         Map<UUID, User> userMap = userIds.isEmpty() ? Map.of() : userRepository.findByIds(userIds).stream()
                 .collect(Collectors.toMap(User::id, user -> user));
 
-        List<AgentEntry> entries = agents.stream()
-                .map(agent -> {
-                    var user = userMap.get(agent.userId());
-                    var agency = agencyMap.get(agent.agencyId());
-                    String photoUrl = resolveMediaUrl(agent.profilePhotoMediaId());
-                    return new AgentEntry(
-                            agent.id(),
-                            agent.userId(),
-                            user != null ? Objects.toString(user.displayName(), "") : "",
-                            user != null ? Objects.toString(user.email(), "") : "",
-                            agent.agencyId(),
-                            agency != null ? Objects.toString(agency.name(), "") : "",
-                            Objects.toString(agent.reaNumber(), ""),
-                            photoUrl,
-                            agent.createdAt(),
-                            agent.updatedAt()
-                    );
-                })
-                .toList();
+        List<AgentEntry> entries = getEntries(agents, userMap, agencyMap);
 
         String search = query.search();
         if (search != null) {
@@ -225,6 +207,28 @@ public class UserDirectoryService {
                 .toList();
 
         return paginate(sorted, query.page(), query.size(), sortCriteria);
+    }
+
+    private List<AgentEntry> getEntries(List<Agent> agents, Map<UUID, User> userMap, Map<UUID, Agency> agencyMap) {
+        return agents.stream()
+                .map(agent -> {
+                    var user = userMap.get(agent.userId());
+                    var agency = agencyMap.get(agent.agencyId());
+                    String photoUrl = resolveMediaUrl(agent.profilePhotoMediaId());
+                    return new AgentEntry(
+                            agent.id(),
+                            agent.userId(),
+                            user != null ? Objects.toString(user.displayName(), "") : "",
+                            user != null ? Objects.toString(user.email(), "") : "",
+                            agent.agencyId(),
+                            agency != null ? Objects.toString(agency.name(), "") : "",
+                            Objects.toString(agent.reaNumber(), ""),
+                            photoUrl,
+                            agent.createdAt(),
+                            agent.updatedAt()
+                    );
+                })
+                .toList();
     }
 
     private List<SortCriterion> ensureSort(List<SortCriterion> requested, SortCriterion defaultSort) {

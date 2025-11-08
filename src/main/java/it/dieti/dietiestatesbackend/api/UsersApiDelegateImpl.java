@@ -237,16 +237,14 @@ public class UsersApiDelegateImpl implements UsersApiDelegate {
         }
         List<UserDirectoryService.SortCriterion> criteria = new ArrayList<>();
         for (String value : sortValues) {
-            if (value == null || value.isBlank()) {
-                continue;
+            if (value != null && !value.isBlank()) {
+                var parts = value.split(",", 2);
+                var property = parts[0].trim();
+                if (isAllowedProperty(property, target)) {
+                    boolean ascending = parts.length < 2 || !"desc".equalsIgnoreCase(parts[1].trim());
+                    criteria.add(new UserDirectoryService.SortCriterion(property, ascending));
+                }
             }
-            var parts = value.split(",", 2);
-            var property = parts[0].trim();
-            if (!isAllowedProperty(property, target)) {
-                continue;
-            }
-            boolean ascending = parts.length < 2 || !"desc".equalsIgnoreCase(parts[1].trim());
-            criteria.add(new UserDirectoryService.SortCriterion(property, ascending));
         }
         return criteria;
     }
