@@ -1,15 +1,6 @@
 package it.dieti.dietiestatesbackend.api;
 
-import it.dieti.dietiestatesbackend.api.model.AdminSummary;
-import it.dieti.dietiestatesbackend.api.model.AdminSummaryPage;
-import it.dieti.dietiestatesbackend.api.model.AgencySummary;
-import it.dieti.dietiestatesbackend.api.model.AgencySummaryPage;
-import it.dieti.dietiestatesbackend.api.model.AgentSummary;
-import it.dieti.dietiestatesbackend.api.model.AgentSummaryPage;
-import it.dieti.dietiestatesbackend.api.model.PageMetadata;
-import it.dieti.dietiestatesbackend.api.model.UserInfo;
-import it.dieti.dietiestatesbackend.api.model.UserInfoAgencyProfile;
-import it.dieti.dietiestatesbackend.api.model.UserInfoAgentProfile;
+import it.dieti.dietiestatesbackend.api.model.*;
 import it.dieti.dietiestatesbackend.application.exception.BadRequestException;
 import it.dieti.dietiestatesbackend.application.exception.ForbiddenException;
 import it.dieti.dietiestatesbackend.application.exception.UnauthorizedException;
@@ -121,6 +112,30 @@ public class UsersApiDelegateImpl implements UsersApiDelegate {
 
         var result = userDirectoryService.listAgents(ctx.role(), ctx.user().id(), query);
         return ResponseEntity.ok(toAgentPage(result));
+    }
+
+    @Override
+    public ResponseEntity<PublicAgentInfo> usersAgentsIdGet(UUID id) {
+        var info = userProfileService.getAgentInfo(id);
+        PublicAgentInfo body = new PublicAgentInfo();
+        body.setDisplayName(info.displayName());
+        body.setEmail(info.email());
+        if (info.profilePhotoUrl() != null && !info.profilePhotoUrl().isBlank()) {
+            body.setProfilePhotoUrl(URI.create(info.profilePhotoUrl()));
+        }
+        return ResponseEntity.ok(body);
+    }
+
+   @Override
+    public ResponseEntity<PublicAgencyInfo> usersAgenciesIdGet(UUID id) {
+        var info = userProfileService.getAgencyInfo(id);
+        PublicAgencyInfo body = new PublicAgencyInfo();
+        body.setName(info.name());
+        body.setEmail(info.email());
+        if (info.logoUrl() != null && !info.logoUrl().isBlank()) {
+            body.setLogoUrl(URI.create(info.logoUrl()));
+        }
+        return ResponseEntity.ok(body);
     }
 
     private it.dieti.dietiestatesbackend.domain.user.User resolveUser(UUID userId) {

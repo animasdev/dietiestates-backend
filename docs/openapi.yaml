@@ -397,7 +397,76 @@ components:
         widthPx: { type: integer, nullable: true }
         heightPx: { type: integer, nullable: true }
       description: Risposta con i metadati principali dell'asset memorizzato.
+    PublicAgentInfo:
+      type: object
+      required: [displayName, email]
+      properties:
+        displayName: { type: string }
+        email: { type: string, format: email }
+        profilePhotoUrl:
+          type: string
+          format: uri
+          nullable: true
+          description: URL pubblico della foto profilo agente
+    PublicAgencyInfo:
+      type: object
+      required: [name, email]
+      properties:
+        name: { type: string }
+        email: { type: string, format: email }
+        logoUrl:
+          type: string
+          format: uri
+          nullable: true
+          description: URL pubblico del logo agenzia
 paths:
+  /users/agents/{id}:
+    get:
+      tags: [Users]
+      summary: Dati pubblici agente
+      description: Restituisce nome, email e foto profilo pubblica dell'agente.
+      security:
+        - {}
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Dati pubblici agente
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PublicAgentInfo' }
+        '404':
+          description: Agente non trovato
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+
+  /users/agencies/{id}:
+    get:
+      tags: [Users]
+      summary: Dati pubblici agenzia
+      description: Restituisce nome, email di riferimento e logo pubblico dell'agenzia.
+      security:
+        - {}
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Dati pubblici agenzia
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PublicAgencyInfo' }
+        '404':
+          description: Agenzia non trovata
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
   /auth/login:
     post:
       tags: [Auth]
