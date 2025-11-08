@@ -2,8 +2,13 @@ package it.dieti.dietiestatesbackend.api;
 
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.enums.ParameterIn;
-import it.dieti.dietiestatesbackend.api.mappers.UsersMappers;
-import it.dieti.dietiestatesbackend.api.model.*;
+import it.dieti.dietiestatesbackend.api.model.DeleteRequest;
+import it.dieti.dietiestatesbackend.api.model.Listing;
+import it.dieti.dietiestatesbackend.api.model.ListingCreate;
+import it.dieti.dietiestatesbackend.api.model.ListingGeo;
+import it.dieti.dietiestatesbackend.api.model.ListingPhoto;
+import it.dieti.dietiestatesbackend.api.model.Page;
+import it.dieti.dietiestatesbackend.api.model.ListingUpdate;
 import it.dieti.dietiestatesbackend.application.exception.BadRequestException;
 import it.dieti.dietiestatesbackend.application.exception.InternalServerErrorException;
 import it.dieti.dietiestatesbackend.application.exception.UnauthorizedException;
@@ -13,7 +18,6 @@ import it.dieti.dietiestatesbackend.application.feature.FeatureService;
 import it.dieti.dietiestatesbackend.application.listing.ListingCreationService;
 import it.dieti.dietiestatesbackend.application.listing.ListingSearchService;
 import it.dieti.dietiestatesbackend.application.media.listing.ListingMediaService;
-import it.dieti.dietiestatesbackend.application.user.UserProfileService;
 import it.dieti.dietiestatesbackend.domain.feature.Feature;
 import org.locationtech.jts.geom.Point;
 import org.slf4j.Logger;
@@ -39,19 +43,16 @@ public class ListingsApiDelegateImpl implements ListingsApiDelegate {
     private final ListingMediaService listingMediaService;
     private final FeatureService featureService;
     private final ListingSearchService listingSearchService;
-    private final UserProfileService userProfileService;
     private static final Logger log = LoggerFactory.getLogger(ListingsApiDelegateImpl.class);
 
     public ListingsApiDelegateImpl(ListingCreationService listingCreationService,
                                    ListingMediaService listingMediaService,
                                    FeatureService featureService,
-                                   ListingSearchService listingSearchService,
-                                   UserProfileService userProfileService) {
+                                   ListingSearchService listingSearchService) {
         this.listingCreationService = listingCreationService;
         this.listingMediaService = listingMediaService;
         this.featureService = featureService;
         this.listingSearchService = listingSearchService;
-        this.userProfileService = userProfileService;
     }
 
 
@@ -121,9 +122,7 @@ public class ListingsApiDelegateImpl implements ListingsApiDelegate {
                             item.listingStatus() != null ? item.listingStatus().code() : null,
                             item.listingType() != null ? item.listingType().code() : null,
                             item.photos().stream().map(this::toApi).toList(),
-                            item.features().stream().map(Feature::code).toList(),
-                            null,
-                            null
+                            item.features().stream().map(Feature::code).toList()
                     ))
                     .toList();
 
@@ -350,18 +349,12 @@ public class ListingsApiDelegateImpl implements ListingsApiDelegate {
         var listingDetails = listingCreationService.getListingDetails(id,userId);
         var photos = listingMediaService.getListingPhotos(id);
         var features = featureService.getListingFeatures(id).stream().map(Feature::code).toList();
-
-        var agencyProfile = userProfileService.findAgencyProfileById(listingDetails.listing().agencyId()).orElse(null);
-
-        var agentProfile = userProfileService.findAgentProfileById(listingDetails.listing().ownerAgentId()).orElse(null);
         return toApi(
                 listingDetails.listing(),
                 listingDetails.listingStatus().code(),
                 listingDetails.listingType().code(),
                 photos.stream().map(this::toApi).toList(),
-                features,
-                UsersMappers.toApi(agentProfile),
-                UsersMappers.toApi(agencyProfile)
+                features
         );
     }
 
@@ -380,7 +373,7 @@ public class ListingsApiDelegateImpl implements ListingsApiDelegate {
                 .position(photoView.position());
     }
 
-    private Listing toApi(it.dieti.dietiestatesbackend.domain.listing.Listing listing, String listingStatus, String typeCode, List<ListingPhoto> photos, List<String> features, UserInfoAgentProfile agentProfile, UserInfoAgencyProfile agencyProfile) {
+    private Listing toApi(it.dieti.dietiestatesbackend.domain.listing.Listing listing,String listingStatus, String typeCode,List<ListingPhoto> photos, List<String> features) {
         Listing body = new Listing();
         body.setId(listing.id());
         body.setAgencyId(listing.agencyId());
@@ -407,8 +400,6 @@ public class ListingsApiDelegateImpl implements ListingsApiDelegate {
         body.setPhotos(photos);
         body.setCreatedAt(listing.createdAt());
         body.setUpdatedAt(listing.updatedAt());
-        body.setAgentProfile(agentProfile);
-        body.setAgencyProfile(agencyProfile);
         return body;
     }
 

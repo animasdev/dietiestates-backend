@@ -31,25 +31,8 @@ public class UserProfileService {
                 .map(a -> new AgencyProfile(a.id(), a.name(), a.description(), resolveMediaUrl(a.logoMediaId())));
     }
 
-    //find profile by id of the table 'agencies'
-    public Optional<AgencyProfile> findAgencyProfileById(UUID agencyId) {
-        return agencyRepository.findById(agencyId)
-                .map(a -> new AgencyProfile(a.id(), a.name(), a.description(), resolveMediaUrl(a.logoMediaId())));
-    }
-
     public Optional<AgentProfile> findAgentProfile(UUID userId) {
         return agentRepository.findByUserId(userId)
-                .map(agent -> new AgentProfile(
-                        agent.agencyId(),
-                        agent.id(),
-                        agent.reaNumber(),
-                        resolveMediaUrl(agent.profilePhotoMediaId())
-                ));
-    }
-
-    //find profile by the id of the table 'agents'
-    public Optional<AgentProfile> findAgentProfileById(UUID agentId) {
-        return agentRepository.findById(agentId)
                 .map(agent -> new AgentProfile(
                         agent.agencyId(),
                         agent.id(),

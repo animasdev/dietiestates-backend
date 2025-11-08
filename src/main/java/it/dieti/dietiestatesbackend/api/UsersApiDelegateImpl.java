@@ -1,6 +1,5 @@
 package it.dieti.dietiestatesbackend.api;
 
-import it.dieti.dietiestatesbackend.api.mappers.UsersMappers;
 import it.dieti.dietiestatesbackend.api.model.AdminSummary;
 import it.dieti.dietiestatesbackend.api.model.AdminSummaryPage;
 import it.dieti.dietiestatesbackend.api.model.AgencySummary;
@@ -9,11 +8,15 @@ import it.dieti.dietiestatesbackend.api.model.AgentSummary;
 import it.dieti.dietiestatesbackend.api.model.AgentSummaryPage;
 import it.dieti.dietiestatesbackend.api.model.PageMetadata;
 import it.dieti.dietiestatesbackend.api.model.UserInfo;
+import it.dieti.dietiestatesbackend.api.model.UserInfoAgencyProfile;
+import it.dieti.dietiestatesbackend.api.model.UserInfoAgentProfile;
 import it.dieti.dietiestatesbackend.application.exception.BadRequestException;
 import it.dieti.dietiestatesbackend.application.exception.ForbiddenException;
 import it.dieti.dietiestatesbackend.application.exception.UnauthorizedException;
 import it.dieti.dietiestatesbackend.application.user.UserDirectoryService;
 import it.dieti.dietiestatesbackend.application.user.UserProfileService;
+import it.dieti.dietiestatesbackend.application.user.UserProfileService.AgentProfile;
+import it.dieti.dietiestatesbackend.application.user.UserProfileService.AgencyProfile;
 import it.dieti.dietiestatesbackend.application.user.UserService;
 import it.dieti.dietiestatesbackend.domain.user.role.RolesEnum;
 import org.slf4j.Logger;
@@ -61,10 +64,10 @@ public class UsersApiDelegateImpl implements UsersApiDelegate {
         body.setRole(ctx.roleCode());
 
         userProfileService.findAgencyProfile(user.id())
-                .ifPresent(profile -> body.setAgencyProfile(UsersMappers.toApi(profile)));
+                .ifPresent(profile -> body.setAgencyProfile(toApi(profile)));
 
         userProfileService.findAgentProfile(user.id())
-                .ifPresent(profile -> body.setAgentProfile(UsersMappers.toApi(profile)));
+                .ifPresent(profile -> body.setAgentProfile(toApi(profile)));
 
         return new ResponseEntity<>(body, HttpStatus.OK);
     }
@@ -241,9 +244,27 @@ public class UsersApiDelegateImpl implements UsersApiDelegate {
         };
     }
 
+    private UserInfoAgencyProfile toApi(AgencyProfile profile) {
+        UserInfoAgencyProfile api = new UserInfoAgencyProfile();
+        api.setName(profile.name());
+        api.setDescription(profile.description());
+        api.agencyId(profile.agencyId());
+        if (profile.logoUrl() != null && !profile.logoUrl().isBlank()) {
+            api.setLogoUrl(URI.create(profile.logoUrl()));
+        }
+        return api;
+    }
 
-
-
+    private UserInfoAgentProfile toApi(AgentProfile profile) {
+        UserInfoAgentProfile api = new UserInfoAgentProfile();
+        api.setAgencyId(profile.agencyId());
+        api.setReaNumber(profile.reaNumber());
+        api.agentId(profile.agentId());
+        if (profile.profilePhotoUrl() != null && !profile.profilePhotoUrl().isBlank()) {
+            api.setProfilePhotoUrl(URI.create(profile.profilePhotoUrl()));
+        }
+        return api;
+    }
 
     private AdminSummary toApi(UserDirectoryService.AdminAccount account) {
         AdminSummary summary = new AdminSummary();

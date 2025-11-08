@@ -107,10 +107,6 @@ components:
         photos:
           type: array
           items: { $ref: '#/components/schemas/ListingPhoto' }
-        agencyProfile:
-          $ref: '#/components/schemas/UserInfoAgencyProfile'
-        agentProfile:
-          $ref: '#/components/schemas/UserInfoAgentProfile'
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
     ListingCreate:
