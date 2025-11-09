@@ -646,7 +646,10 @@ paths:
                 oldPassword: { type: string, format: password, minLength: 8 }
                 newPassword: { type: string, format: password, minLength: 8 }
       responses:
-        '200': { description: password changed }
+        '200':
+          description: password changed
+          content:
+            application/json: {}
         '400':
           description: Invalid or expired token
           content:
