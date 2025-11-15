@@ -24,16 +24,20 @@ public class PasswordResetService {
     private final PasswordEncoder passwordEncoder;
     private final SecurityPasswordProperties passwordProps;
     private final NotificationService notificationService;
+    private final RefreshTokenService refreshTokenService;
 
     public PasswordResetService(UserRepository userRepository,
                                 PasswordResetTokenRepository tokenRepository,
                                 PasswordEncoder passwordEncoder,
-                                SecurityPasswordProperties passwordProps, NotificationService notificationService) {
+                                SecurityPasswordProperties passwordProps,
+                                NotificationService notificationService,
+                                RefreshTokenService refreshTokenService) {
         this.userRepository = userRepository;
         this.tokenRepository = tokenRepository;
         this.passwordEncoder = passwordEncoder;
         this.passwordProps = passwordProps;
         this.notificationService = notificationService;
+        this.refreshTokenService = refreshTokenService;
     }
 
     @Transactional
@@ -89,6 +93,8 @@ public class PasswordResetService {
                 u.invitedByUserId()
         );
         userRepository.update(updatedUser);
+        // Revoke all sessions for this user after password reset
+        refreshTokenService.revokeAllForUser(u.id());
 
         var consumed = new PasswordResetToken(
                 t.id(), t.userId(), t.token(), t.expiresAt(), now, t.createdAt(), now
@@ -117,6 +123,8 @@ public class PasswordResetService {
                 u.invitedByUserId()
         );
         userRepository.update(updatedUser);
+        // Revoke all sessions for this user after password change
+        refreshTokenService.revokeAllForUser(u.id());
         return true;
     }
 

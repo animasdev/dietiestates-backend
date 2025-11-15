@@ -541,6 +541,20 @@ paths:
             Set-Cookie:
               description: Expired refresh cookie
               schema: { type: string }
+  /auth/logout-all:
+    post:
+      tags: [Auth]
+      summary: Logout on all devices (revoke all refresh tokens)
+      description: Revokes all active refresh tokens for the current user and expires the current cookie.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Global logout requested
+          headers:
+            Set-Cookie:
+              description: Expired refresh cookie
+              schema: { type: string }
   /auth/password-reset/request:
     post:
       tags: [Auth]

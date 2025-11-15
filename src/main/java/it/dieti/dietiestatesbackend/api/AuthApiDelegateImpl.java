@@ -171,6 +171,25 @@ public class AuthApiDelegateImpl implements AuthApiDelegate {
         }
     }
 
+    @Override
+    public ResponseEntity<Void> authLogoutAllPost() {
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        if (!(auth instanceof JwtAuthenticationToken jwtAuth)) {
+            log.warn("Logout-all senza token");
+            throw UnauthorizedException.bearerTokenMissing();
+        }
+        try {
+            var userId = java.util.UUID.fromString(jwtAuth.getToken().getSubject());
+            refreshTokenService.revokeAllForUser(userId);
+        } catch (Exception e) {
+            log.warn("Errore durante logout-all", e);
+        }
+        var expired = refreshTokenService.expireCookie();
+        return ResponseEntity.ok()
+                .header(org.springframework.http.HttpHeaders.SET_COOKIE, expired.toString())
+                .build();
+    }
+
     private String resolveRequestedRoleCode(AuthSignUpRequestPostRequest request) {
         var roleCode = request.getRoleCode();
         if (roleCode == null || roleCode.isBlank()) {

@@ -110,7 +110,7 @@ public class RefreshTokenService {
 
     private String generateAccessToken(UUID userId) {
         Instant now = Instant.now();
-        long seconds = clamp(jwtConfig.getExpiresSeconds(), 600, 3600); // clamp 10–60 min
+        long seconds = clamp(jwtConfig.getExpiresSeconds(), 300, 3600); // clamp 5–60 min
         Instant exp = now.plusSeconds(seconds);
         JwtClaimsSet claims = JwtClaimsSet.builder()
                 .issuer(jwtConfig.getIssuer())
