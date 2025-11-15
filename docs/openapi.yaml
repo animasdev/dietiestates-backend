@@ -484,13 +484,16 @@ paths:
       responses:
         '200':
           description: Authenticated
+          headers:
+            Set-Cookie:
+              description: HttpOnly refresh token cookie (SameSite, Path, Max-Age)
+              schema: { type: string }
           content:
             application/json:
               schema:
                 type: object
                 properties:
                   accessToken: { type: string }
-                  refreshToken: { type: string }
                   firstAccess:
                     type: boolean
                     description: true se l'utente è al primo accesso e deve cambiare password
@@ -508,31 +511,36 @@ paths:
   /auth/refresh:
     post:
       tags: [Auth]
-      summary: Refresh access token
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [refreshToken]
-              properties:
-                refreshToken: { type: string }
+      summary: Refresh access token (from HttpOnly cookie)
       responses:
         '200':
           description: New access token
+          headers:
+            Set-Cookie:
+              description: Rotated HttpOnly refresh token cookie
+              schema: { type: string }
           content:
             application/json:
               schema:
                 type: object
                 properties:
                   accessToken: { type: string }
-                  refreshToken: { type: string }
         '401':
           description: Invalid refresh token
           content:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Problem' }
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: Logout (expire refresh cookie)
+      responses:
+        '200':
+          description: Logged out
+          headers:
+            Set-Cookie:
+              description: Expired refresh cookie
+              schema: { type: string }
   /auth/password-reset/request:
     post:
       tags: [Auth]

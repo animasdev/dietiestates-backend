@@ -7,7 +7,7 @@ import org.springframework.context.annotation.Configuration;
 @ConfigurationProperties(prefix = "app.jwt")
 public class JwtConfig {
     private String secret;
-    private long expiresSeconds = 6L * 3600;
+    private long expiresSeconds = 3600;
     private String issuer = "dietiestates-backend";
 
     public String getSecret() { return secret; }

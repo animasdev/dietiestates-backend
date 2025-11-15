@@ -57,6 +57,7 @@ public class SecurityConfig {
                 .requestMatchers(
                         "/auth/login",
                         "/auth/refresh",
+                        "/auth/logout",
                         "/auth/sign-up/request",
                         "/auth/sign-up/confirm",
                         "/auth/password-reset/request",

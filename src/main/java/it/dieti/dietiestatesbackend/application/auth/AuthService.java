@@ -53,7 +53,7 @@ public class AuthService {
         this.notificationService = notificationService;
     }
 
-    public record AuthLoginResult(String accessToken, boolean firstAccess, UUID invitedByUserId) {}
+    public record AuthLoginResult(UUID userId, String accessToken, boolean firstAccess, UUID invitedByUserId) {}
 
     public AuthLoginResult login(String email, String password) {
         var normalized = email == null ? "" : email.trim();
@@ -103,7 +103,7 @@ public class AuthService {
 
         var header = JwsHeader.with(MacAlgorithm.HS256).build();
         String token = jwtEncoder.encode(JwtEncoderParameters.from(header, claims)).getTokenValue();
-        return new AuthLoginResult(token, firstAccess, invitedBy);
+        return new AuthLoginResult(user.id(), token, firstAccess, invitedBy);
     }
 
     private RolesEnum resolveRoleEnum(String code) {

@@ -12,6 +12,10 @@ public class UnauthorizedException extends ApplicationHttpException {
         return new UnauthorizedException("Autenticazione richiesta: fornire un bearer token valido.");
     }
 
+    public static UnauthorizedException refreshTokenMissing() {
+        return new UnauthorizedException("Refresh token cookie mancante.");
+    }
+
     public static UnauthorizedException invalidCredentials() {
         return new UnauthorizedException("Credenziali non valide.");
     }

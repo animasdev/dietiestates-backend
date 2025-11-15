@@ -3,6 +3,7 @@ package it.dieti.dietiestatesbackend.api;
 import it.dieti.dietiestatesbackend.api.model.*;
 import it.dieti.dietiestatesbackend.application.auth.AuthService;
 import it.dieti.dietiestatesbackend.application.auth.PasswordResetService;
+import it.dieti.dietiestatesbackend.application.auth.RefreshTokenService;
 import it.dieti.dietiestatesbackend.application.exception.BadRequestException;
 import it.dieti.dietiestatesbackend.application.exception.ForbiddenException;
 import it.dieti.dietiestatesbackend.application.exception.InternalServerErrorException;
@@ -25,12 +26,14 @@ public class AuthApiDelegateImpl implements AuthApiDelegate {
     private final AuthService authService;
     private final UserService userService;
     private final PasswordResetService passwordResetService;
+    private final RefreshTokenService refreshTokenService;
     private static final Logger log = LoggerFactory.getLogger(AuthApiDelegateImpl.class);
 
-    public AuthApiDelegateImpl(AuthService authService, UserService userService, PasswordResetService passwordResetService) {
+    public AuthApiDelegateImpl(AuthService authService, UserService userService, PasswordResetService passwordResetService, RefreshTokenService refreshTokenService) {
         this.authService = authService;
         this.userService = userService;
         this.passwordResetService = passwordResetService;
+        this.refreshTokenService = refreshTokenService;
     }
 
     @Override
@@ -45,7 +48,10 @@ public class AuthApiDelegateImpl implements AuthApiDelegate {
             } else {
                 body.setInvitedBy(null);
             }
-            return ResponseEntity.ok(body);
+            var issue = refreshTokenService.issue(result.userId());
+            return ResponseEntity.ok()
+                    .header(org.springframework.http.HttpHeaders.SET_COOKIE, issue.cookie().toString())
+                    .body(body);
         } catch (BadCredentialsException ex) {
             log.warn("Login fallito per email {}", authLoginPostRequest.getEmail());
             throw UnauthorizedException.invalidCredentials();
@@ -54,6 +60,38 @@ public class AuthApiDelegateImpl implements AuthApiDelegate {
         } catch (Exception ex) {
             log.error("Errore inatteso durante login", ex);
             throw new InternalServerErrorException("Si è verificato un errore interno. Riprova più tardi.");
+        }
+    }
+
+    @Override
+    public ResponseEntity<AuthRefreshPost200Response> authRefreshPost() {
+        try {
+            var request = org.springframework.web.context.request.RequestContextHolder.getRequestAttributes();
+            if (!(request instanceof org.springframework.web.context.request.ServletRequestAttributes attrs)) {
+                throw UnauthorizedException.bearerTokenMissing();
+            }
+            var httpReq = attrs.getRequest();
+            String cookieValue = null;
+            if (httpReq.getCookies() != null) {
+                for (var c : httpReq.getCookies()) {
+                    if ("refreshToken".equals(c.getName())) {
+                        cookieValue = c.getValue();
+                        break;
+                    }
+                }
+            }
+            var refreshed = refreshTokenService.refresh(cookieValue);
+            var body = new it.dieti.dietiestatesbackend.api.model.AuthRefreshPost200Response();
+            body.setAccessToken(refreshed.accessToken());
+            // refreshToken field kept for backward compat in schema but not used: do not set
+            return ResponseEntity.ok()
+                    .header(org.springframework.http.HttpHeaders.SET_COOKIE, refreshed.rotatedCookie().toString())
+                    .body(body);
+        } catch (UnauthorizedException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            log.error("Errore inatteso durante refresh", ex);
+            throw new InternalServerErrorException("Errore durante il refresh del token");
         }
     }
 
@@ -108,6 +146,29 @@ public class AuthApiDelegateImpl implements AuthApiDelegate {
         }
         log.warn("Cambio password fallito per user {}", userId);
         throw BadRequestException.of("Password non aggiornata: verifica la password attuale e i requisiti della nuova password.");
+    }
+
+    @Override
+    public ResponseEntity<Void> authLogoutPost(){
+        try {
+            var request = org.springframework.web.context.request.RequestContextHolder.getRequestAttributes();
+            String raw = null;
+            if (request instanceof org.springframework.web.context.request.ServletRequestAttributes attrs && attrs.getRequest().getCookies() != null) {
+                for (var c : attrs.getRequest().getCookies()) {
+                    if ("refreshToken".equals(c.getName())) { raw = c.getValue(); break; }
+                }
+            }
+            // Revoke this refresh token server-side and expire cookie on client
+            refreshTokenService.revokeByRawToken(raw);
+            var expired = refreshTokenService.expireCookie();
+            return ResponseEntity.ok()
+                    .header(org.springframework.http.HttpHeaders.SET_COOKIE, expired.toString())
+                    .build();
+        } catch (Exception ex) {
+            log.warn("Errore durante logout", ex);
+            var expired = refreshTokenService.expireCookie();
+            return ResponseEntity.ok().header(org.springframework.http.HttpHeaders.SET_COOKIE, expired.toString()).build();
+        }
     }
 
     private String resolveRequestedRoleCode(AuthSignUpRequestPostRequest request) {
