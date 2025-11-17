@@ -57,10 +57,10 @@ public class EmailDeliveryService {
                 sendSimpleEmail(e);
                 markSent(e);
                 log.info("Email SENT id={} to={} subject={}", e.getId(), e.getRecipient(), e.getSubject());
-                break;
+                return; // success: exit loop and method
             } catch (MailException ex) {
                 if (handleFailure(e, ex, allowEscalation, maxAttempts)) {
-                    break; // give up (FAILED)
+                    return; // give up (FAILED): exit method
                 }
                 sleepBackoff(e.getAttempts());
             }
@@ -165,4 +165,3 @@ public class EmailDeliveryService {
         }
     }
 }
-
