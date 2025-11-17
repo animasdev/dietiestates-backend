@@ -48,9 +48,23 @@ app:
       strength: 10
   notification:
     async-enabled: true
-    enabled: ${MAIL_ENABLED:false}
-    fromEmail: ${MAIL_FROM:noreply@dietiestates.it}
+    enabled: ${MAIL_ENABLED:true}
+    fromEmail: ${MAIL_FROM:}
     fromName: ${MAIL_FROM_NAME:DietiEstates}
+    # Retry and escalation defaults
+    maxAttempts: ${MAIL_MAX_ATTEMPTS:5}
+    backoffBaseMillis: ${MAIL_BACKOFF_BASE_MS:1000}
+    backoffMultiplier: ${MAIL_BACKOFF_MULTIPLIER:2.0}
+    supportEmail: ${MAIL_SUPPORT_EMAIL:}
+    schedulerEnabled: ${MAIL_SCHEDULER_ENABLED:true}
+    schedulerFixedDelayMillis: ${MAIL_SCHEDULER_DELAY_MS:15000}
+
+  bootstrap:
+    superadmin:
+      # Allow overriding default bootstrap superadmin email and display name
+      enabled: ${APP_BOOTSTRAP_SUPERADMIN_ENABLED:true}
+      email: ${APP_BOOTSTRAP_SUPERADMIN_EMAIL:}
+      displayName: ${APP_BOOTSTRAP_SUPERADMIN_NAME:Super Admin}
 
 # Configurazione Supabase Storage (solo file storage in locale)
 # Per Supabase local, la CLI stampa le chiavi e le porte all'avvio.

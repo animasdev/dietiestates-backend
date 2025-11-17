@@ -6,6 +6,7 @@ import it.dieti.dietiestatesbackend.domain.user.role.Role;
 import it.dieti.dietiestatesbackend.domain.user.role.RoleRepository;
 import it.dieti.dietiestatesbackend.domain.user.role.RolesEnum;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import it.dieti.dietiestatesbackend.config.AdminBootstrapProperties;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,18 +20,18 @@ public class UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final it.dieti.dietiestatesbackend.config.SecurityPasswordProperties passwordProps;
-
-    private static final String DEFAULT_SUPERADMIN_EMAIL = "superadmin@dietiestates.local";
-    private static final String DEFAULT_SUPERADMIN_NAME = "Super Admin";
+    private final AdminBootstrapProperties superAdminProps;
 
     public UserService(RoleRepository roleRepository,
                        UserRepository userRepository,
                        PasswordEncoder passwordEncoder,
-                       it.dieti.dietiestatesbackend.config.SecurityPasswordProperties passwordProps) {
+                       it.dieti.dietiestatesbackend.config.SecurityPasswordProperties passwordProps,
+                       AdminBootstrapProperties superAdminProps) {
         this.roleRepository = roleRepository;
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.passwordProps = passwordProps;
+        this.superAdminProps = superAdminProps;
     }
 
     public List<Role> findAllRoles() {
@@ -43,7 +44,9 @@ public class UserService {
      */
     @Transactional
     public String createDefaultSuperAdminIfMissing() {
-        if (userRepository.existsByEmail(DEFAULT_SUPERADMIN_EMAIL)) {
+        String email = superAdminProps.getEmail();
+        String name = superAdminProps.getDisplayName();
+        if (userRepository.existsByEmail(email)) {
             return null;
         }
         String generatedPassword = generateSecurePassword(24);
@@ -51,8 +54,8 @@ public class UserService {
         Role role = getSuperAdminRole();
         User user = new User(
                 null,
-                DEFAULT_SUPERADMIN_NAME,
-                DEFAULT_SUPERADMIN_EMAIL,
+                name,
+                email,
                 true,
                 role.id(),
                 passwordHash,

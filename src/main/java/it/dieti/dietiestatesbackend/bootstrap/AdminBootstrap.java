@@ -1,6 +1,7 @@
 package it.dieti.dietiestatesbackend.bootstrap;
 
 import it.dieti.dietiestatesbackend.application.user.UserService;
+import it.dieti.dietiestatesbackend.config.AdminBootstrapProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationArguments;
@@ -17,9 +18,11 @@ public class AdminBootstrap implements ApplicationRunner {
     private static final Logger log = LoggerFactory.getLogger(AdminBootstrap.class);
 
     private final UserService userService;
+    private final AdminBootstrapProperties superAdminProps;
 
-    public AdminBootstrap(UserService userService) {
+    public AdminBootstrap(UserService userService, AdminBootstrapProperties superAdminProps) {
         this.userService = userService;
+        this.superAdminProps = superAdminProps;
     }
 
     @Override
@@ -28,7 +31,7 @@ public class AdminBootstrap implements ApplicationRunner {
         if (password != null) {
             // Intentionally log the one-time generated password for first access
             log.warn("Created default SUPERADMIN account. email={}, temporaryPassword={}",
-                    "superadmin@dietiestates.local", password);
+                    superAdminProps.getEmail(), password);
         } else {
             log.info("SUPERADMIN account already present; no bootstrap action performed.");
         }

@@ -585,7 +585,10 @@ paths:
                 token: { type: string }
                 newPassword: { type: string, format: password, minLength: 8 }
       responses:
-        '200': { description: Password updated }
+        '200':
+          description: Password updated
+          content:
+            application/json: {}
         '400':
           description: Invalid or expired token
           content:
