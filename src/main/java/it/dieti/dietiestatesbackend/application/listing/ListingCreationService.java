@@ -249,6 +249,12 @@ public class ListingCreationService {
         var updatedListing = applyListingUpdates(listing, command);
         var saved = listingRepository.save(updatedListing);
         featureService.syncListingFeatures(saved.id(), command.featureCodes());
+
+        // Record a moderation EDIT action when a privileged user (ADMIN/SUPERADMIN) performs the update
+        if (isPrivileged) {
+            moderationService.recordListingEdit(saved.id(), userId, userRole, null);
+        }
+
         return saved;
     }
 
