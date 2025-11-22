@@ -235,10 +235,10 @@ public class ListingsApiDelegateImpl implements ListingsApiDelegate {
                 ? listingCreate.getPriceCents().longValue()
                 : null;
         Long securityDepositCents = listingCreate.getSecurityDepositCents() != null
-                ? listingCreate.getSecurityDepositCents().longValue()
+                ? listingCreate.getSecurityDepositCents()
                 : null;
         Long condoFeeCents = listingCreate.getCondoFeeCents() != null
-                ? listingCreate.getCondoFeeCents().longValue()
+                ? listingCreate.getCondoFeeCents()
                 : null;
 
         var userId = UUID.fromString(jwtAuth.getToken().getSubject());
@@ -289,7 +289,7 @@ public class ListingsApiDelegateImpl implements ListingsApiDelegate {
 
     @Override
     public ResponseEntity<Listing> listingsIdGet(
-            @Parameter(name = "id", description = "", required = true, in = ParameterIn.PATH) UUID id
+            @Parameter(name = "id", required = true, in = ParameterIn.PATH) UUID id
     ){
         UUID userId = null;
         var auth = SecurityContextHolder.getContext().getAuthentication();
@@ -325,10 +325,10 @@ public class ListingsApiDelegateImpl implements ListingsApiDelegate {
         Double longitude = geo != null ? Double.valueOf(geo.getLng()) : null;
         var featureCodes = listingUpdate.getFeatures() != null ? List.copyOf(listingUpdate.getFeatures()) : null;
         Long securityDepositCents = listingUpdate.getSecurityDepositCents() != null
-                ? listingUpdate.getSecurityDepositCents().longValue()
+                ? listingUpdate.getSecurityDepositCents()
                 : null;
         Long condoFeeCents = listingUpdate.getCondoFeeCents() != null
-                ? listingUpdate.getCondoFeeCents().longValue()
+                ? listingUpdate.getCondoFeeCents()
                 : null;
 
         var command = new ListingCreationService.UpdateListingCommand(
