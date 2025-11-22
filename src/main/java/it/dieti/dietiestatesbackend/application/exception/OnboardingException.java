@@ -1,4 +1,4 @@
-package it.dieti.dietiestatesbackend.application.onboarding;
+package it.dieti.dietiestatesbackend.application.exception;
 
 public class OnboardingException extends RuntimeException {
     public enum Reason {

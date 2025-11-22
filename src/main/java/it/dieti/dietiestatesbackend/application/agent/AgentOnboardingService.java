@@ -2,7 +2,7 @@ package it.dieti.dietiestatesbackend.application.agent;
 
 import it.dieti.dietiestatesbackend.application.exception.ApplicationHttpException;
 import it.dieti.dietiestatesbackend.application.exception.BadRequestException;
-import it.dieti.dietiestatesbackend.application.onboarding.OnboardingException;
+import it.dieti.dietiestatesbackend.application.exception.OnboardingException;
 import it.dieti.dietiestatesbackend.domain.agent.Agent;
 import it.dieti.dietiestatesbackend.domain.agent.AgentRepository;
 import it.dieti.dietiestatesbackend.domain.agency.AgencyRepository;

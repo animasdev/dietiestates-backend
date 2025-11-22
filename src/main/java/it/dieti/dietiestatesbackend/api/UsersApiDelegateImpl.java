@@ -7,7 +7,7 @@ import it.dieti.dietiestatesbackend.application.exception.UnauthorizedException;
 import it.dieti.dietiestatesbackend.application.user.UserDirectoryService;
 import it.dieti.dietiestatesbackend.application.agency.AgencyOnboardingService;
 import it.dieti.dietiestatesbackend.application.agent.AgentOnboardingService;
-import it.dieti.dietiestatesbackend.application.onboarding.OnboardingException;
+import it.dieti.dietiestatesbackend.application.exception.OnboardingException;
 import it.dieti.dietiestatesbackend.domain.agency.AgencyRepository;
 import it.dieti.dietiestatesbackend.application.user.UserProfileService;
 import it.dieti.dietiestatesbackend.application.user.UserProfileService.AgentProfile;
