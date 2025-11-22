@@ -39,10 +39,12 @@ import java.util.stream.Collectors;
 @Service
 public class ListingsApiDelegateImpl implements ListingsApiDelegate {
 
+    private static final String LISTING = "listing";
     private final ListingCreationService listingCreationService;
     private final ListingMediaService listingMediaService;
     private final FeatureService featureService;
     private final ListingSearchService listingSearchService;
+    private static final String NO_LISTING_BY_ID = "nessun listing trovato per id";
     private static final Logger log = LoggerFactory.getLogger(ListingsApiDelegateImpl.class);
 
     public ListingsApiDelegateImpl(ListingCreationService listingCreationService,
@@ -137,6 +139,79 @@ public class ListingsApiDelegateImpl implements ListingsApiDelegate {
         } catch (Exception ex) {
             log.error("Errore inatteso durante la ricerca annunci", ex);
             throw new InternalServerErrorException("Si è verificato un errore interno. Riprova più tardi.");
+        }
+    }
+
+    @Override
+    public ResponseEntity<java.util.List<ListingPhoto>> listingsIdPhotosPost(
+            UUID id,
+            java.util.List<@jakarta.validation.Valid ListingPhoto> listingPhotos) {
+
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        if (!(auth instanceof JwtAuthenticationToken jwtAuth)) {
+            log.warn("Tentativo upload media senza token");
+            throw UnauthorizedException.bearerTokenMissing();
+        }
+        var userId = UUID.fromString(jwtAuth.getToken().getSubject());
+
+        try {
+            var photos = listingMediaService.attachListingPhotos(userId, id, listingPhotos);
+            return new ResponseEntity<>(photos, HttpStatus.CREATED);
+        } catch (java.util.NoSuchElementException exception) {
+            log.warn(exception.getMessage());
+            if (exception.getMessage().equals(LISTING))
+                throw it.dieti.dietiestatesbackend.application.exception.BadRequestException.forField("id", NO_LISTING_BY_ID + " '" + id + "'.");
+            else
+                throw it.dieti.dietiestatesbackend.application.exception.BadRequestException.of(exception.getMessage());
+        }
+    }
+
+    @Override
+    public ResponseEntity<Void> listingsIdPhotosPhotoIdDelete(UUID id, UUID photoId) {
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        if (!(auth instanceof JwtAuthenticationToken jwtAuth)) {
+            log.warn("Tentativo delete media senza token");
+            throw UnauthorizedException.bearerTokenMissing();
+        }
+        var userId = UUID.fromString(jwtAuth.getToken().getSubject());
+
+        try {
+            listingMediaService.removeListingPhoto(userId, id, photoId);
+            return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+        } catch (java.util.NoSuchElementException exception) {
+            log.warn(exception.getMessage());
+            if (LISTING.equals(exception.getMessage())) {
+                throw it.dieti.dietiestatesbackend.application.exception.BadRequestException.forField("id", NO_LISTING_BY_ID + " '" + id + "'.");
+            } else if ("photo".equals(exception.getMessage())) {
+                throw it.dieti.dietiestatesbackend.application.exception.BadRequestException.forField("photoId", "nessuna foto trovata per id '" + photoId + "'.");
+            } else {
+                throw it.dieti.dietiestatesbackend.application.exception.BadRequestException.of(exception.getMessage());
+            }
+        }
+    }
+
+    @Override
+    public ResponseEntity<java.util.List<ListingPhoto>> listingsIdPhotosOrderPut(UUID id, java.util.List<UUID> body) {
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        if (!(auth instanceof JwtAuthenticationToken jwtAuth)) {
+            log.warn("Tentativo reorder media senza token");
+            throw UnauthorizedException.bearerTokenMissing();
+        }
+        var userId = UUID.fromString(jwtAuth.getToken().getSubject());
+
+        try {
+            var views = listingMediaService.reorderListingPhotos(userId, id, body);
+            var result = views.stream()
+                    .map(v -> new ListingPhoto().id(v.id()).url(URI.create(v.publicUrl())).position(v.position()))
+                    .toList();
+            return new ResponseEntity<>(result, HttpStatus.OK);
+        } catch (java.util.NoSuchElementException exception) {
+            log.warn(exception.getMessage());
+            if (LISTING.equals(exception.getMessage())) {
+                throw it.dieti.dietiestatesbackend.application.exception.BadRequestException.forField("id", NO_LISTING_BY_ID + " '" + id + "'.");
+            } else {
+                throw it.dieti.dietiestatesbackend.application.exception.BadRequestException.of(exception.getMessage());
+            }
         }
     }
 

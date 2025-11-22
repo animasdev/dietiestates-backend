@@ -5,6 +5,10 @@ import it.dieti.dietiestatesbackend.application.exception.BadRequestException;
 import it.dieti.dietiestatesbackend.application.exception.ForbiddenException;
 import it.dieti.dietiestatesbackend.application.exception.UnauthorizedException;
 import it.dieti.dietiestatesbackend.application.user.UserDirectoryService;
+import it.dieti.dietiestatesbackend.application.agency.AgencyOnboardingService;
+import it.dieti.dietiestatesbackend.application.agent.AgentOnboardingService;
+import it.dieti.dietiestatesbackend.application.onboarding.OnboardingException;
+import it.dieti.dietiestatesbackend.domain.agency.AgencyRepository;
 import it.dieti.dietiestatesbackend.application.user.UserProfileService;
 import it.dieti.dietiestatesbackend.application.user.UserProfileService.AgentProfile;
 import it.dieti.dietiestatesbackend.application.user.UserProfileService.AgencyProfile;
@@ -35,13 +39,22 @@ public class UsersApiDelegateImpl implements UsersApiDelegate {
     private final UserProfileService userProfileService;
     private final UserDirectoryService userDirectoryService;
     private static final Logger log = LoggerFactory.getLogger(UsersApiDelegateImpl.class);
+    private final AgencyOnboardingService agencyOnboardingService;
+    private final AgentOnboardingService agentOnboardingService;
+    private final AgencyRepository agencyRepository;
 
     public UsersApiDelegateImpl(UserService userService,
                                 UserProfileService userProfileService,
-                                UserDirectoryService userDirectoryService) {
+                                UserDirectoryService userDirectoryService,
+                                AgencyOnboardingService agencyOnboardingService,
+                                AgentOnboardingService agentOnboardingService,
+                                AgencyRepository agencyRepository) {
         this.userService = userService;
         this.userProfileService = userProfileService;
         this.userDirectoryService = userDirectoryService;
+        this.agencyOnboardingService = agencyOnboardingService;
+        this.agentOnboardingService = agentOnboardingService;
+        this.agencyRepository = agencyRepository;
     }
 
     @Override
@@ -372,6 +385,126 @@ public class UsersApiDelegateImpl implements UsersApiDelegate {
         return URI.create(value);
     }
 
+    @Override
+    public ResponseEntity<Agency> usersAgenciesPost(AgencyCreateRequest agencyCreateRequest) {
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        if (!(auth instanceof JwtAuthenticationToken jwtAuth)) {
+            log.warn("Tentativo di completare profilo agenzia senza token");
+            throw UnauthorizedException.bearerTokenMissing();
+        }
+
+        var userId = UUID.fromString(jwtAuth.getToken().getSubject());
+        try {
+            var command = new AgencyOnboardingService.CompleteAgencyProfileCommand(
+                    agencyCreateRequest.getName(),
+                    agencyCreateRequest.getDescription(),
+                    agencyCreateRequest.getLogoMediaId()
+            );
+            var agency = agencyOnboardingService.completeProfile(userId, command);
+            return ResponseEntity.status(HttpStatus.CREATED).body(toApi(agency));
+        } catch (OnboardingException ex) {
+            throw translateOnboardingExceptionForAgency(ex, userId);
+        }
+    }
+
+    @Override
+    public ResponseEntity<Agent> usersAgentsPost(AgentCreateRequest agentCreateRequest) {
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        if (!(auth instanceof JwtAuthenticationToken jwtAuth)) {
+            log.warn("Tentativo di completare profilo agente senza token");
+            throw UnauthorizedException.bearerTokenMissing();
+        }
+
+        var userId = UUID.fromString(jwtAuth.getToken().getSubject());
+        try {
+            var agency = agencyRepository.findByUserId(agentCreateRequest.getAgencyId())
+                    .orElseThrow(() -> new OnboardingException(OnboardingException.Reason.AGENCY_NOT_FOUND, ""));
+            log.info("[Agent Onboarding] agenzia torvata? {}", agency.id());
+            var command = new AgentOnboardingService.CompleteAgentProfileCommand(
+                    agency.id(),
+                    agentCreateRequest.getReaNumber(),
+                    agentCreateRequest.getProfilePhotoMediaId()
+            );
+            var agent = agentOnboardingService.completeProfile(userId, command);
+            return ResponseEntity.status(HttpStatus.CREATED).body(toApi(agent));
+        } catch (OnboardingException ex) {
+            throw translateOnboardingExceptionForAgent(ex, userId);
+        }
+    }
+
+    private RuntimeException translateOnboardingExceptionForAgency(OnboardingException ex, UUID userId) {
+        return switch (ex.reason()) {
+            case USER_NOT_FOUND -> {
+                log.warn("Utente {} non trovato durante onboarding agenzia", userId);
+                yield UnauthorizedException.userNotFound();
+            }
+            case ROLE_NOT_ALLOWED -> {
+                log.warn("Utente {} senza ruolo valido per onboarding agenzia", userId);
+                yield it.dieti.dietiestatesbackend.application.exception.ForbiddenException.actionRequiresRole("AGENCY");
+            }
+            case PROFILE_ALREADY_EXISTS -> {
+                log.warn("Utente {} ha già un profilo agenzia", userId);
+                yield it.dieti.dietiestatesbackend.application.exception.ConflictException.of("Profilo agenzia già completato.");
+            }
+            case FIRST_ACCESS_ALREADY_COMPLETED -> {
+                log.warn("Utente {} ha già completato il firstAccess", userId);
+                yield it.dieti.dietiestatesbackend.application.exception.ConflictException.of("Profilo agenzia già confermato.");
+            }
+            case AGENCY_NOT_FOUND -> {
+                log.warn("Agenzia non trovata durante onboarding per utente {}", userId);
+                yield BadRequestException.of("Agenzia di riferimento non trovata.");
+            }
+        };
+    }
+
+    private RuntimeException translateOnboardingExceptionForAgent(OnboardingException ex, UUID userId) {
+        return switch (ex.reason()) {
+            case USER_NOT_FOUND -> {
+                log.warn("Utente {} non trovato durante onboarding agente", userId);
+                yield UnauthorizedException.userNotFound();
+            }
+            case ROLE_NOT_ALLOWED -> {
+                log.warn("Utente {} senza ruolo valido per onboarding agente", userId);
+                yield it.dieti.dietiestatesbackend.application.exception.ForbiddenException.actionRequiresRole("AGENT");
+            }
+            case PROFILE_ALREADY_EXISTS -> {
+                log.warn("Utente {} ha già un profilo agente", userId);
+                yield it.dieti.dietiestatesbackend.application.exception.ConflictException.of("Profilo agente già completato.");
+            }
+            case FIRST_ACCESS_ALREADY_COMPLETED -> {
+                log.warn("Utente {} ha già completato il firstAccess per profilo agente", userId);
+                yield it.dieti.dietiestatesbackend.application.exception.ConflictException.of("Profilo agente già confermato.");
+            }
+            case AGENCY_NOT_FOUND -> {
+                log.warn("Agenzia non trovata durante onboarding agente per user {}", userId);
+                yield BadRequestException.of("Agenzia indicata non trovata.");
+            }
+        };
+    }
+    private Agent toApi(it.dieti.dietiestatesbackend.domain.agent.Agent agent) {
+        Agent body = new Agent();
+        body.setId(agent.id());
+        body.setUserId(agent.userId());
+        body.setAgencyId(agent.agencyId());
+        body.setReaNumber(agent.reaNumber());
+        body.setProfilePhotoMediaId(agent.profilePhotoMediaId());
+        body.setCreatedAt(agent.createdAt());
+        body.setUpdatedAt(agent.updatedAt());
+        return body;
+    }
+    private Agency toApi(it.dieti.dietiestatesbackend.domain.agency.Agency agency) {
+        Agency body = new Agency();
+        body.setId(agency.id());
+        body.setName(agency.name());
+        body.setDescription(agency.description());
+        body.setUserId(agency.userId());
+        body.setLogoMediaId(agency.logoMediaId());
+        body.setApprovedBy(agency.approvedBy());
+        body.setApprovedAt(agency.approvedAt());
+        body.setCreatedAt(agency.createdAt());
+        body.setUpdatedAt(agency.updatedAt());
+        return body;
+    }
     private record AuthenticatedUserContext(it.dieti.dietiestatesbackend.domain.user.User user,
                                             RolesEnum role,
                                             String roleCode) {}

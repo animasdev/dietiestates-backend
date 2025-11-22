@@ -12,11 +12,8 @@ servers:
 tags:
   - name: Auth
   - name: Listings
-  - name: Listing Photos
   - name: Features
   - name: Users
-  - name: Agencies
-  - name: Agents
   - name: Media
   - name: Moderation
 components:
@@ -990,7 +987,7 @@ paths:
 
   /listings/{id}/photos:
     get:
-      tags: [Listing Photos]
+      tags: [Listings]
       summary: List photos for a listing
       parameters:
         - name: id
@@ -1006,7 +1003,7 @@ paths:
                 type: array
                 items: { $ref: '#/components/schemas/ListingPhoto' }
     post:
-      tags: [Listing Photos]
+      tags: [Listings]
       summary: attach photos to listing
       security:
         - bearerAuth: []
@@ -1033,7 +1030,7 @@ paths:
 
   /listings/{id}/photos/order:
     put:
-      tags: [Listing Photos]
+      tags: [Listings]
       summary: Replace the order of listing photos
       description: |
         Replaces the complete order of photos for the listing. The body must contain all
@@ -1080,7 +1077,7 @@ paths:
 
   /listings/{id}/photos/{photoId}:
     delete:
-      tags: [Listing Photos]
+      tags: [Listings]
       summary: Remove a photo from listing
       security:
         - bearerAuth: []
@@ -1209,6 +1206,47 @@ paths:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Problem' }
 
+    post:
+      tags: [Users]
+      summary: Completa il profilo dell'agenzia al primo accesso
+      description: |
+        Utilizzato dagli utenti con ruolo `AGENCY` dopo la prima autenticazione per censire i
+        dettagli dell'agenzia. L'ID proprietario viene derivato dal token (`sub`) e il campo
+        `firstAccess` dell'utente viene impostato a `false` al termine del flusso.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AgencyCreateRequest' }
+      responses:
+        '201':
+          description: Profilo agenzia creato
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Agency' }
+        '400':
+          description: Dati non validi
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '401':
+          description: Richiesta non autenticata
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '403':
+          description: Ruolo non autorizzato a completare il profilo agenzia
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '409':
+          description: Profilo già completato o first access già consumato
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+
   /users/agents:
     get:
       tags: [Users]
@@ -1253,51 +1291,8 @@ paths:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Problem' }
 
-  /agencies:
     post:
-      tags: [Agencies]
-      summary: Completa il profilo dell'agenzia al primo accesso
-      description: |
-        Utilizzato dagli utenti con ruolo `AGENCY` dopo la prima autenticazione per censire i
-        dettagli dell'agenzia. L'ID proprietario viene derivato dal token (`sub`) e il campo
-        `firstAccess` dell'utente viene impostato a `false` al termine del flusso.
-      security:
-        - bearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: '#/components/schemas/AgencyCreateRequest' }
-      responses:
-        '201':
-          description: Profilo agenzia creato
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Agency' }
-        '400':
-          description: Dati non validi
-          content:
-            application/problem+json:
-              schema: { $ref: '#/components/schemas/Problem' }
-        '401':
-          description: Richiesta non autenticata
-          content:
-            application/problem+json:
-              schema: { $ref: '#/components/schemas/Problem' }
-        '403':
-          description: Ruolo non autorizzato a completare il profilo agenzia
-          content:
-            application/problem+json:
-              schema: { $ref: '#/components/schemas/Problem' }
-        '409':
-          description: Profilo già completato o first access già consumato
-          content:
-            application/problem+json:
-              schema: { $ref: '#/components/schemas/Problem' }
-
-  /agents:
-    post:
-      tags: [Agents]
+      tags: [Users]
       summary: Completa il profilo dell'agente al primo accesso
       description: |
         Utilizzato dagli utenti con ruolo `AGENT` dopo la prima autenticazione per associare il
