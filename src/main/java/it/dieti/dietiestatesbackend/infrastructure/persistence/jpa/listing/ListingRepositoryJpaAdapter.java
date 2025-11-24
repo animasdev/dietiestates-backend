@@ -3,8 +3,8 @@ package it.dieti.dietiestatesbackend.infrastructure.persistence.jpa.listing;
 import it.dieti.dietiestatesbackend.domain.listing.Listing;
 import it.dieti.dietiestatesbackend.domain.listing.ListingRepository;
 import it.dieti.dietiestatesbackend.domain.listing.status.ListingStatusesEnum;
-import it.dieti.dietiestatesbackend.infrastructure.persistence.jpa.agent.AgentEntity;
-import it.dieti.dietiestatesbackend.infrastructure.persistence.jpa.agency.AgencyEntity;
+import it.dieti.dietiestatesbackend.infrastructure.persistence.jpa.user.agent.AgentEntity;
+import it.dieti.dietiestatesbackend.infrastructure.persistence.jpa.user.agency.AgencyEntity;
 import org.springframework.stereotype.Repository;
 
 import java.time.OffsetDateTime;

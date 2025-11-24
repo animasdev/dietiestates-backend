@@ -1,4 +1,4 @@
-package it.dieti.dietiestatesbackend.domain.agency;
+package it.dieti.dietiestatesbackend.domain.user.agency;
 
 import java.time.OffsetDateTime;
 import java.util.UUID;

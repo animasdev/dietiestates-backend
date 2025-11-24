@@ -1,6 +1,5 @@
-package it.dieti.dietiestatesbackend.infrastructure.persistence.jpa.agent;
+package it.dieti.dietiestatesbackend.infrastructure.persistence.jpa.user.agency;
 
-import it.dieti.dietiestatesbackend.infrastructure.persistence.jpa.agency.AgencyEntity;
 import it.dieti.dietiestatesbackend.infrastructure.persistence.jpa.media.MediaAssetEntity;
 import it.dieti.dietiestatesbackend.infrastructure.persistence.jpa.user.UserEntity;
 import jakarta.persistence.*;
@@ -13,29 +12,35 @@ import java.util.UUID;
 import static jakarta.persistence.FetchType.LAZY;
 
 @Entity
-@Table(name = "agents")
+@Table(name = "agencies")
 @Getter
 @Setter
-public class AgentEntity {
+public class AgencyEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     @Column(nullable = false)
     private UUID id;
+
+    @Column(nullable = false)
+    private String name;
+
+    @Column(nullable = false)
+    private String description;
 
     @OneToOne(fetch = LAZY)
     @JoinColumn(name = "user_id", nullable = false, unique = true)
     private UserEntity user;
 
     @ManyToOne(fetch = LAZY)
-    @JoinColumn(name = "agency_id", nullable = false)
-    private AgencyEntity agency;
-
-    @Column(name = "rea_number", nullable = false)
-    private String reaNumber;
+    @JoinColumn(name = "logo_media_id")
+    private MediaAssetEntity logoMedia;
 
     @ManyToOne(fetch = LAZY)
-    @JoinColumn(name = "profile_photo_media_id")
-    private MediaAssetEntity profilePhotoMedia;
+    @JoinColumn(name = "approved_by")
+    private UserEntity approvedBy;
+
+    @Column(name = "approved_at")
+    private OffsetDateTime approvedAt;
 
     @Column(name = "created_at", nullable = false)
     private OffsetDateTime createdAt;

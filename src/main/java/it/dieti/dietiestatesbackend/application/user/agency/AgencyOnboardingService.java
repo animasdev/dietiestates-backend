@@ -1,10 +1,10 @@
-package it.dieti.dietiestatesbackend.application.agency;
+package it.dieti.dietiestatesbackend.application.user.agency;
 
 import it.dieti.dietiestatesbackend.application.exception.ApplicationHttpException;
 import it.dieti.dietiestatesbackend.application.exception.BadRequestException;
 import it.dieti.dietiestatesbackend.application.exception.OnboardingException;
-import it.dieti.dietiestatesbackend.domain.agency.Agency;
-import it.dieti.dietiestatesbackend.domain.agency.AgencyRepository;
+import it.dieti.dietiestatesbackend.domain.user.agency.Agency;
+import it.dieti.dietiestatesbackend.domain.user.agency.AgencyRepository;
 import it.dieti.dietiestatesbackend.domain.user.User;
 import it.dieti.dietiestatesbackend.domain.user.UserRepository;
 import it.dieti.dietiestatesbackend.domain.user.role.RoleRepository;

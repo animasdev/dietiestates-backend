@@ -1,4 +1,4 @@
-package it.dieti.dietiestatesbackend.infrastructure.persistence.jpa.agent;
+package it.dieti.dietiestatesbackend.infrastructure.persistence.jpa.user.agent;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 

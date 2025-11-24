@@ -1,4 +1,4 @@
-package it.dieti.dietiestatesbackend.domain.agent;
+package it.dieti.dietiestatesbackend.domain.user.agent;
 
 import java.util.List;
 import java.util.Optional;

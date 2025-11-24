@@ -1,7 +1,7 @@
-package it.dieti.dietiestatesbackend.infrastructure.persistence.jpa.agency;
+package it.dieti.dietiestatesbackend.infrastructure.persistence.jpa.user.agency;
 
-import it.dieti.dietiestatesbackend.domain.agency.Agency;
-import it.dieti.dietiestatesbackend.domain.agency.AgencyRepository;
+import it.dieti.dietiestatesbackend.domain.user.agency.Agency;
+import it.dieti.dietiestatesbackend.domain.user.agency.AgencyRepository;
 import it.dieti.dietiestatesbackend.infrastructure.persistence.jpa.media.MediaAssetEntity;
 import it.dieti.dietiestatesbackend.infrastructure.persistence.jpa.user.UserEntity;
 import org.springframework.data.domain.Sort;

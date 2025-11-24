@@ -5,7 +5,7 @@ import it.dieti.dietiestatesbackend.application.exception.BadRequestException;
 import it.dieti.dietiestatesbackend.application.exception.ForbiddenException;
 import it.dieti.dietiestatesbackend.application.exception.listing.AgentProfileRequiredException;
 import it.dieti.dietiestatesbackend.application.media.MediaAssetService;
-import it.dieti.dietiestatesbackend.domain.agent.AgentRepository;
+import it.dieti.dietiestatesbackend.domain.user.agent.AgentRepository;
 import it.dieti.dietiestatesbackend.domain.listing.ListingRepository;
 import it.dieti.dietiestatesbackend.domain.media.MediaAssetRepository;
 import it.dieti.dietiestatesbackend.domain.media.listing.ListingMedia;

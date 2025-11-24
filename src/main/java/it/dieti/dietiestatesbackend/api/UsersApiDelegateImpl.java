@@ -5,10 +5,10 @@ import it.dieti.dietiestatesbackend.application.exception.BadRequestException;
 import it.dieti.dietiestatesbackend.application.exception.ForbiddenException;
 import it.dieti.dietiestatesbackend.application.exception.UnauthorizedException;
 import it.dieti.dietiestatesbackend.application.user.UserDirectoryService;
-import it.dieti.dietiestatesbackend.application.agency.AgencyOnboardingService;
-import it.dieti.dietiestatesbackend.application.agent.AgentOnboardingService;
+import it.dieti.dietiestatesbackend.application.user.agency.AgencyOnboardingService;
+import it.dieti.dietiestatesbackend.application.user.agent.AgentOnboardingService;
 import it.dieti.dietiestatesbackend.application.exception.OnboardingException;
-import it.dieti.dietiestatesbackend.domain.agency.AgencyRepository;
+import it.dieti.dietiestatesbackend.domain.user.agency.AgencyRepository;
 import it.dieti.dietiestatesbackend.application.user.UserProfileService;
 import it.dieti.dietiestatesbackend.application.user.UserProfileService.AgentProfile;
 import it.dieti.dietiestatesbackend.application.user.UserProfileService.AgencyProfile;
@@ -481,7 +481,7 @@ public class UsersApiDelegateImpl implements UsersApiDelegate {
             }
         };
     }
-    private Agent toApi(it.dieti.dietiestatesbackend.domain.agent.Agent agent) {
+    private Agent toApi(it.dieti.dietiestatesbackend.domain.user.agent.Agent agent) {
         Agent body = new Agent();
         body.setId(agent.id());
         body.setUserId(agent.userId());
@@ -492,7 +492,7 @@ public class UsersApiDelegateImpl implements UsersApiDelegate {
         body.setUpdatedAt(agent.updatedAt());
         return body;
     }
-    private Agency toApi(it.dieti.dietiestatesbackend.domain.agency.Agency agency) {
+    private Agency toApi(it.dieti.dietiestatesbackend.domain.user.agency.Agency agency) {
         Agency body = new Agency();
         body.setId(agency.id());
         body.setName(agency.name());

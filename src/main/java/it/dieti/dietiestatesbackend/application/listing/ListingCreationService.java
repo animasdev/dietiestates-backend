@@ -15,8 +15,8 @@ import it.dieti.dietiestatesbackend.application.exception.listing.PriceValidatio
 import it.dieti.dietiestatesbackend.application.feature.FeatureService;
 import it.dieti.dietiestatesbackend.application.notification.NotificationService;
 import it.dieti.dietiestatesbackend.application.moderation.ModerationService;
-import it.dieti.dietiestatesbackend.domain.agent.Agent;
-import it.dieti.dietiestatesbackend.domain.agent.AgentRepository;
+import it.dieti.dietiestatesbackend.domain.user.agent.Agent;
+import it.dieti.dietiestatesbackend.domain.user.agent.AgentRepository;
 import it.dieti.dietiestatesbackend.domain.listing.Listing;
 import it.dieti.dietiestatesbackend.domain.listing.ListingRepository;
 import it.dieti.dietiestatesbackend.domain.listing.ListingType;

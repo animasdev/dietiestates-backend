@@ -1,7 +1,7 @@
 package it.dieti.dietiestatesbackend.infrastructure.persistence.jpa.listing;
 
-import it.dieti.dietiestatesbackend.infrastructure.persistence.jpa.agent.AgentEntity;
-import it.dieti.dietiestatesbackend.infrastructure.persistence.jpa.agency.AgencyEntity;
+import it.dieti.dietiestatesbackend.infrastructure.persistence.jpa.user.agent.AgentEntity;
+import it.dieti.dietiestatesbackend.infrastructure.persistence.jpa.user.agency.AgencyEntity;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;

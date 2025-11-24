@@ -1,8 +1,8 @@
-package it.dieti.dietiestatesbackend.infrastructure.persistence.jpa.agent;
+package it.dieti.dietiestatesbackend.infrastructure.persistence.jpa.user.agent;
 
-import it.dieti.dietiestatesbackend.domain.agent.Agent;
-import it.dieti.dietiestatesbackend.domain.agent.AgentRepository;
-import it.dieti.dietiestatesbackend.infrastructure.persistence.jpa.agency.AgencyEntity;
+import it.dieti.dietiestatesbackend.domain.user.agent.Agent;
+import it.dieti.dietiestatesbackend.domain.user.agent.AgentRepository;
+import it.dieti.dietiestatesbackend.infrastructure.persistence.jpa.user.agency.AgencyEntity;
 import it.dieti.dietiestatesbackend.infrastructure.persistence.jpa.media.MediaAssetEntity;
 import it.dieti.dietiestatesbackend.infrastructure.persistence.jpa.user.UserEntity;
 import org.springframework.stereotype.Repository;

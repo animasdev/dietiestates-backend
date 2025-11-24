@@ -1,8 +1,8 @@
 package it.dieti.dietiestatesbackend.application.user;
 
 import it.dieti.dietiestatesbackend.application.exception.NotFoundException;
-import it.dieti.dietiestatesbackend.domain.agency.AgencyRepository;
-import it.dieti.dietiestatesbackend.domain.agent.AgentRepository;
+import it.dieti.dietiestatesbackend.domain.user.agency.AgencyRepository;
+import it.dieti.dietiestatesbackend.domain.user.agent.AgentRepository;
 import it.dieti.dietiestatesbackend.domain.media.MediaAsset;
 import it.dieti.dietiestatesbackend.domain.media.MediaAssetRepository;
 import it.dieti.dietiestatesbackend.domain.user.UserRepository;
