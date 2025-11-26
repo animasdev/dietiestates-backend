@@ -8,7 +8,6 @@ import it.dieti.dietiestatesbackend.application.user.UserDirectoryService;
 import it.dieti.dietiestatesbackend.application.user.agency.AgencyOnboardingService;
 import it.dieti.dietiestatesbackend.application.user.agent.AgentOnboardingService;
 import it.dieti.dietiestatesbackend.application.exception.OnboardingException;
-import it.dieti.dietiestatesbackend.domain.user.agency.AgencyRepository;
 import it.dieti.dietiestatesbackend.application.user.UserProfileService;
 import it.dieti.dietiestatesbackend.application.user.UserProfileService.AgentProfile;
 import it.dieti.dietiestatesbackend.application.user.UserProfileService.AgencyProfile;
@@ -41,20 +40,17 @@ public class UsersApiDelegateImpl implements UsersApiDelegate {
     private static final Logger log = LoggerFactory.getLogger(UsersApiDelegateImpl.class);
     private final AgencyOnboardingService agencyOnboardingService;
     private final AgentOnboardingService agentOnboardingService;
-    private final AgencyRepository agencyRepository;
 
     public UsersApiDelegateImpl(UserService userService,
                                 UserProfileService userProfileService,
                                 UserDirectoryService userDirectoryService,
                                 AgencyOnboardingService agencyOnboardingService,
-                                AgentOnboardingService agentOnboardingService,
-                                AgencyRepository agencyRepository) {
+                                AgentOnboardingService agentOnboardingService) {
         this.userService = userService;
         this.userProfileService = userProfileService;
         this.userDirectoryService = userDirectoryService;
         this.agencyOnboardingService = agencyOnboardingService;
         this.agentOnboardingService = agentOnboardingService;
-        this.agencyRepository = agencyRepository;
     }
 
     @Override
@@ -417,9 +413,8 @@ public class UsersApiDelegateImpl implements UsersApiDelegate {
 
         var userId = UUID.fromString(jwtAuth.getToken().getSubject());
         try {
-            var agency = agencyRepository.findByUserId(agentCreateRequest.getAgencyId())
-                    .orElseThrow(() -> new OnboardingException(OnboardingException.Reason.AGENCY_NOT_FOUND, ""));
-            log.info("[Agent Onboarding] agenzia torvata? {}", agency.id());
+            var agency = agencyOnboardingService.requireExistingAgency(agentCreateRequest.getAgencyId());
+            log.info("[Agent Onboarding] agenzia trovata {}", agency.id());
             var command = new AgentOnboardingService.CompleteAgentProfileCommand(
                     agency.id(),
                     agentCreateRequest.getReaNumber(),

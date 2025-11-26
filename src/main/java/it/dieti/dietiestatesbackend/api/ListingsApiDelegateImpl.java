@@ -389,7 +389,7 @@ public class ListingsApiDelegateImpl implements ListingsApiDelegate {
         return ResponseEntity.status(HttpStatus.OK).body(getFullListing(listing.id(),userId));
     }
 
-    // Will be wired after OpenAPI codegen updates the interface
+
     @Override
     public ResponseEntity<Listing> listingsIdPublishPost(
             @Parameter(name = "id", required = true, in = ParameterIn.PATH) UUID id
@@ -404,7 +404,7 @@ public class ListingsApiDelegateImpl implements ListingsApiDelegate {
         return ResponseEntity.status(HttpStatus.OK).body(getFullListing(listing.id(), userId));
     }
 
-    // Will be wired after OpenAPI codegen updates the interface
+
     @Override
     public ResponseEntity<Listing> listingsIdDraftPost(
             @Parameter(name = "id", required = true, in = ParameterIn.PATH) UUID id,
