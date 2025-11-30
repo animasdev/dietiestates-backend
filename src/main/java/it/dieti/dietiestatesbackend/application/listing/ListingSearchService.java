@@ -400,12 +400,14 @@ public class ListingSearchService {
         var result = new ArrayList<String>();
         var seen = new HashSet<String>();
         for (String raw : values) {
-            if (raw == null) continue;
-            var norm = raw.trim().toUpperCase(Locale.ROOT);
-            if (norm.isEmpty()) continue;
-            if (seen.add(norm)) {
-                result.add(norm);
+            if (raw != null){
+                var norm = raw.trim().toUpperCase(Locale.ROOT);
+
+                if (!norm.isEmpty() && seen.add(norm)) {
+                        result.add(norm);
+                }
             }
+
         }
         return result;
     }
