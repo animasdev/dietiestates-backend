@@ -205,19 +205,23 @@ public class ListingMediaService {
 
     public void removeListingPhoto(UUID userId, UUID listingId, UUID listingPhotoId) {
         var userRole = resolveUserRole(userId);
-        boolean isPrivileged = userRole == RolesEnum.ADMIN || userRole == RolesEnum.SUPERADMIN;
-
-        var agent = isPrivileged ? null : agentRepository.findByUserId(userId)
-                .orElseThrow(() -> ForbiddenException.actionRequiresRoles(null));
         var listing = listingRepository.findById(listingId)
-                .orElseThrow(() -> new NoSuchElementException(LISTING));
-
-        if (!isPrivileged) {
+                .orElse(null);
+        boolean isPrivileged = userRole == RolesEnum.ADMIN || userRole == RolesEnum.SUPERADMIN;
+        if (isPrivileged) {
+            if (listing == null) {
+                throw new NoSuchElementException(LISTING);
+            }
+            log.info("Privileged user {} with role {} removed photo {} from listing {}", userId, userRole, listingPhotoId, listingId);
+        } else {
+            var agent = agentRepository.findByUserId(userId)
+                    .orElseThrow(() -> ForbiddenException.actionRequiresRoles(null));
+            if (listing == null) {
+                throw new NoSuchElementException(LISTING);
+            }
             if (!agent.id().equals(listing.ownerAgentId())) {
                 throw ForbiddenException.actionRequiresRole(PROPRIETARIO);
             }
-        } else {
-            log.info("Privileged user {} with role {} removed photo {} from listing {}", userId, userRole, listingPhotoId, listingId);
         }
 
         var listingMedia = listingMediaRepository.findById(listingPhotoId)
@@ -234,7 +238,6 @@ public class ListingMediaService {
         // Also delete the underlying media asset (DB + storage) in a best-effort manner
         mediaAssetService.deleteAsset(mediaId);
     }
-
     @Transactional
     public List<ListingPhotoView> reorderListingPhotos(UUID userId, UUID listingId, List<UUID> orderedPhotoIds) {
         var userRole = resolveUserRole(userId);
