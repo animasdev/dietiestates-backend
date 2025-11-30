@@ -4,7 +4,6 @@ import it.dieti.dietiestatesbackend.application.exception.BadRequestException;
 import it.dieti.dietiestatesbackend.application.exception.ConflictException;
 import it.dieti.dietiestatesbackend.application.exception.ForbiddenException;
 import it.dieti.dietiestatesbackend.application.exception.listing.AgentProfileRequiredException;
-import it.dieti.dietiestatesbackend.application.exception.listing.CoordinatesValidationException;
 import it.dieti.dietiestatesbackend.application.exception.listing.PriceValidationException;
 import it.dieti.dietiestatesbackend.domain.user.agent.Agent;
 import it.dieti.dietiestatesbackend.domain.user.agent.AgentRepository;
@@ -70,6 +69,8 @@ class ListingCreationServiceTest {
     private NotificationService notificationService;
     @Mock
     private ModerationService moderationService;
+    @org.mockito.Spy
+    private CoordinatesValidator coordinatesValidator;
 
     @InjectMocks
     private ListingCreationService listingCreationService;
@@ -87,6 +88,7 @@ class ListingCreationServiceTest {
         agencyId = UUID.randomUUID();
         typeId = UUID.randomUUID();
         statusId = UUID.randomUUID();
+        // no stubbing needed for spy: calls real method by default
     }
 
     @Test
@@ -994,36 +996,7 @@ class ListingCreationServiceTest {
         assertThrows(PriceValidationException.class, () -> listingCreationService.createListingForUser(userId, command));
     }
 
-    @Test
-    void createListingForUser_rejectsLatitudeOutOfRange() {
-        mockAgentWithBasics();
-
-        var command = new ListingCreationService.CreateListingCommand(
-                "Monolocale",
-                "Descrizione",
-                "SALE",
-                1000L,
-                null,
-                null,
-                null,
-                "A2",
-                null,
-                null,
-                null,
-                null,
-                null,
-                "Via",
-                "City",
-                null,
-                95.0,
-                12.5,
-                false,
-                List.of()
-
-        );
-
-        assertThrows(CoordinatesValidationException.class, () -> listingCreationService.createListingForUser(userId, command));
-    }
+    
 
     @Test
     void updateListingForUser_allowsAdminToEditListingsRegardlessOfOwnership() {

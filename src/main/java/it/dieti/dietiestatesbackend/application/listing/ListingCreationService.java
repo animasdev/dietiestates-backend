@@ -8,7 +8,6 @@ import it.dieti.dietiestatesbackend.application.exception.InternalServerErrorExc
 import it.dieti.dietiestatesbackend.application.exception.NotFoundException;
 import it.dieti.dietiestatesbackend.application.exception.UnauthorizedException;
 import it.dieti.dietiestatesbackend.application.exception.listing.AgentProfileRequiredException;
-import it.dieti.dietiestatesbackend.application.exception.listing.CoordinatesValidationException;
 import it.dieti.dietiestatesbackend.application.exception.listing.ListingStatusUnavailableException;
 import it.dieti.dietiestatesbackend.application.exception.listing.ListingTypeNotSupportedException;
 import it.dieti.dietiestatesbackend.application.exception.listing.PriceValidationException;
@@ -72,6 +71,7 @@ public class ListingCreationService {
     private final FeatureService featureService;
     private final NotificationService notificationService;
     private final ModerationService moderationService;
+    private final CoordinatesValidator coordinatesValidator;
 
     private static final Logger log = LoggerFactory.getLogger(ListingCreationService.class);
     private static final String INTERNAL_ERROR_MESSAGE = "Si è verificato un errore interno. Riprova più tardi.";
@@ -86,7 +86,8 @@ public class ListingCreationService {
                                   RoleRepository roleRepository,
                                   FeatureService featureService,
                                   NotificationService notificationService,
-                                  ModerationService moderationService) {
+                                  ModerationService moderationService,
+                                  CoordinatesValidator coordinatesValidator) {
         this.listingRepository = listingRepository;
         this.listingTypeRepository = listingTypeRepository;
         this.listingStatusRepository = listingStatusRepository;
@@ -96,6 +97,7 @@ public class ListingCreationService {
         this.featureService = featureService;
         this.notificationService = notificationService;
         this.moderationService = moderationService;
+        this.coordinatesValidator = coordinatesValidator;
     }
 
     public record CreateListingCommand(
@@ -868,18 +870,7 @@ public class ListingCreationService {
     }
 
     private void validateCoordinates(double latitude, double longitude) {
-        if (Double.isNaN(latitude)) {
-            throw CoordinatesValidationException.notANumber("geo.lat");
-        }
-        if (Double.isNaN(longitude)) {
-            throw CoordinatesValidationException.notANumber("geo.lng");
-        }
-        if (latitude < -90 || latitude > 90) {
-            throw CoordinatesValidationException.latitudeOutOfRange();
-        }
-        if (longitude < -180 || longitude > 180) {
-            throw CoordinatesValidationException.longitudeOutOfRange();
-        }
+            coordinatesValidator.validate(latitude, longitude);
     }
 
     private String normalize(String value) {

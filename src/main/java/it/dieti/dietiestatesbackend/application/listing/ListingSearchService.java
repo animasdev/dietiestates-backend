@@ -46,19 +46,22 @@ public class ListingSearchService {
     private final FeatureRepository featureRepository;
     private final FeatureService featureService;
     private final ListingMediaService listingMediaService;
+    private final CoordinatesValidator coordinatesValidator;
 
     public ListingSearchService(ListingSearchRepository listingSearchRepository,
                                 ListingTypeRepository listingTypeRepository,
                                 ListingStatusRepository listingStatusRepository,
                                 FeatureRepository featureRepository,
                                 FeatureService featureService,
-                                ListingMediaService listingMediaService) {
+                                ListingMediaService listingMediaService,
+                                CoordinatesValidator coordinatesValidator) {
         this.listingSearchRepository = listingSearchRepository;
         this.listingTypeRepository = listingTypeRepository;
         this.listingStatusRepository = listingStatusRepository;
         this.featureRepository = featureRepository;
         this.featureService = featureService;
         this.listingMediaService = listingMediaService;
+        this.coordinatesValidator = coordinatesValidator;
     }
 
     public record SearchQuery(
@@ -217,7 +220,7 @@ public class ListingSearchService {
         if (latitude == null || longitude == null || radius == null) {
             throw BadRequestException.forField("within", "Per filtrare per raggio devi fornire lat, lng e radiusMeters.");
         }
-        validateCoordinates(latitude, longitude);
+        coordinatesValidator.validate(latitude, longitude);
         if (radius < MIN_RADIUS_METERS || radius > MAX_RADIUS_METERS) {
             throw BadRequestException.forField("radiusMeters", "Il parametro 'radiusMeters' deve essere compreso tra " + MIN_RADIUS_METERS + " e " + MAX_RADIUS_METERS + ".");
         }
@@ -381,20 +384,7 @@ public class ListingSearchService {
         return status;
     }
 
-    private void validateCoordinates(double latitude, double longitude) {
-        if (Double.isNaN(latitude)) {
-            throw BadRequestException.forField("lat", "Il parametro 'lat' deve essere un numero valido.");
-        }
-        if (Double.isNaN(longitude)) {
-            throw BadRequestException.forField("lng", "Il parametro 'lng' deve essere un numero valido.");
-        }
-        if (latitude < -90 || latitude > 90) {
-            throw BadRequestException.forField("lat", "Il parametro 'lat' deve essere compreso tra -90 e 90.");
-        }
-        if (longitude < -180 || longitude > 180) {
-            throw BadRequestException.forField("lng", "Il parametro 'lng' deve essere compreso tra -180 e 180.");
-        }
-    }
+    // coordinates validation extracted to CoordinatesValidator
 
     private String normalizeUpper(String value) {
         if (value == null || value.isBlank()) {
