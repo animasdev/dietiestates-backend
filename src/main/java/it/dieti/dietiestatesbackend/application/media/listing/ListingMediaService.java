@@ -68,7 +68,7 @@ public class ListingMediaService {
         var agent = agentRepository.findByUserId(userId)
                 .orElseThrow(AgentProfileRequiredException::new);
         var listing = listingRepository.findById(listingId)
-                .orElseThrow(() -> new NoSuchElementException(LISTING));
+                .orElseThrow(() -> BadRequestException.forField(LISTING, "Annuncio inesistente."));
 
         if (!agent.id().equals(listing.ownerAgentId())) {
             throw ForbiddenException.actionRequiresRole(PROPRIETARIO);
@@ -208,7 +208,7 @@ public class ListingMediaService {
         boolean isPrivileged = userRole == RolesEnum.ADMIN || userRole == RolesEnum.SUPERADMIN;
 
         var agent = isPrivileged ? null : agentRepository.findByUserId(userId)
-                .orElseThrow(AgentProfileRequiredException::new);
+                .orElseThrow(() -> ForbiddenException.actionRequiresRoles(null));
         var listing = listingRepository.findById(listingId)
                 .orElseThrow(() -> new NoSuchElementException(LISTING));
 
@@ -240,10 +240,12 @@ public class ListingMediaService {
         var userRole = resolveUserRole(userId);
         boolean isPrivileged = userRole == RolesEnum.ADMIN || userRole == RolesEnum.SUPERADMIN;
 
+        // Per utenti non privilegiati, verifichiamo prima il profilo agente (autorizzazione), poi l'esistenza del listing
         var agent = isPrivileged ? null : agentRepository.findByUserId(userId)
-                .orElseThrow(AgentProfileRequiredException::new);
+                .orElseThrow(() -> ForbiddenException.of("Permesso negato: profilo agente richiesto."));
+
         var listing = listingRepository.findById(listingId)
-                .orElseThrow(() -> new NoSuchElementException(LISTING));
+                .orElseThrow(() -> BadRequestException.forField(LISTING, "Annuncio inesistente."));
 
         if (!isPrivileged && !agent.id().equals(listing.ownerAgentId())) {
                 throw ForbiddenException.actionRequiresRole(PROPRIETARIO);
