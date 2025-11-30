@@ -73,13 +73,12 @@ public class MediaAssetService {
             log.warn("Upload media senza file allegato");
             throw BadRequestException.forField("file", "Il campo 'file' è obbligatorio.");
         }
-        if (file.getSize() > MAX_BYTES) {
+        else if (file.getSize() > MAX_BYTES) {
             log.warn("Upload media con dimensione {} bytes oltre il limite", file.getSize());
             throw BadRequestException.forField("file", "Il file supera la dimensione massima consentita (5MB).");
         }
-        var contentType = file.getContentType();
-        if (contentType == null || !SUPPORTED_TYPES.contains(contentType.toLowerCase())) {
-            log.warn("Upload media con content-type non supportato: {}", contentType);
+        else if (file.getContentType() == null ||  !SUPPORTED_TYPES.contains(file.getContentType() != null ? file.getContentType().toLowerCase() : "null")) {
+            log.warn("Upload media con content-type non supportato: {}", file.getContentType());
             throw BadRequestException.forField("file", "Formato file non supportato. Usa JPEG, PNG o WEBP.");
         }
     }
