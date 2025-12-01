@@ -1,0 +1,17 @@
+# Build output
+target
+
+# IDE / tooling
+.idea
+.mvn
+.m2
+*.iml
+
+# VCS
+.git
+.gitignore
+
+# Node/yarn cache (if any)
+node_modules
+**/.DS_Store
+

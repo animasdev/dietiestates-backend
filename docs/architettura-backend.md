@@ -3,28 +3,26 @@
 Obiettivo: backend monolite modulare con confini chiari tra sottosistemi e persistenza affidabile.
 
 ## Moduli applicativi
-- Auth & Users: autenticazione (JWT proprietari), federazione OAuth2/OIDC (Google, in seguito), profili utente/ruoli.
+- Auth & Users: autenticazione (JWT proprietari),profili utente/ruoli.
 - Listings: gestione annunci (censimento, foto, versioning, soft delete, moderazione e ricerca).
 - (TODO) Notifications: invio email asincrono (coda outbox + worker), audit delle notifiche.
 
 ## Persistenza e migrazioni
-- DB: PostgreSQL 16 + PostGIS (estensione abilitata via Flyway).
+- DB: PostgreSQL 16 + PostGIS (estensione abilitata via Flyway). 
 - Migrazioni: Flyway (`db/migration`), schema versionato e ripetibile.
 -  (TODO) Media: Supabase Storage (locale, solo per sviluppo) per file/immagini; URL memorizzati nel DB.
 
 ## Integrazioni e librerie
-- Spring Security + OAuth2 Client (Google) per federazione login; emissione di token applicativi prevista lato backend.
-- Springdoc OpenAPI UI per documentare le API (`/v3/api-docs`, `/swagger-ui.html`).
+- Spring Security, emissione di token applicativi prevista lato backend.
 - Actuator per health/info e diagnostica runtime.
 - OpenAPI Generator (Maven) per generazione automatica delle API: vedi `apis.md`.
 
 ## Stile architetturale
-- Esagonale (Ports & Adapters) / Clean Architecture.
 - Confini chiari:
-  - Adapter “driving” (ingress): Web REST (OpenAPI generator, `*ApiDelegateImpl`).
+  - Adapter ingresso: Web REST (OpenAPI generator, `*ApiDelegateImpl`).
   - Application: orchestrano validazioni, transazioni, policy.
   - Domain: modello e interfacce senza dipendenze da framework.
-  - Adapter “driven” (egress): persistenza JPA, storage esterni, API di terze parti.
+  - Persistenza: persistenza JPA, storage esterni, API di terze parti.
 
 ## Pattern Repository (persistenza)
 - Il dominio espone un'interfaccia `Repository` che descrive le operazioni necessarie.

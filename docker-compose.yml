@@ -2,14 +2,48 @@ version: "3.9"
 services:
   db:
     image: postgis/postgis:16-3.4
-    container_name: dietiestates25-db
+    container_name: dietiestates-db
+    env_file:
+      - .env
     environment:
-      POSTGRES_DB: dietiestates25
-      POSTGRES_USER: app
-      POSTGRES_PASSWORD: app
+      POSTGRES_DB: ${DB_NAME:-dietiestates25}
+      POSTGRES_USER: ${DB_USER:-app}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-app}
     ports:
-      - "54322:5432"
+      - "${DB_PORT_ON_HOST:-54322}:5432"
     volumes:
-      - db_data:/var/lib/postgresql/data
+      - dietiestates-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-app} -d ${DB_NAME:-dietiestates25}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: dietiestates-app
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL:-jdbc:postgresql://db:5432/${DB_NAME:-dietiestates25}}
+      SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME:-${DB_USER:-app}}
+      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD:-${DB_PASSWORD:-app}}
+      SPRING_FLYWAY_ENABLED: ${SPRING_FLYWAY_ENABLED:-true}
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-default}
+      # Optional: pass JVM options (e.g. memory limits)
+      JAVA_OPTS: ${JAVA_OPTS:-}
+    ports:
+      - "${APP_PORT:-8080}:8080"
+    volumes:
+      # Persist uploaded files (default basePath is storage/media)
+      - media_data:/app/storage/media
+
 volumes:
-  db_data:
+  dietiestates-db:
+  media_data:
