@@ -87,11 +87,11 @@ public class AgencyOnboardingService {
         return saved;
     }
 
-    public Agency requireExistingAgency(UUID agencyId) {
-        if (agencyId == null) {
+    public Agency requireExistingAgencyByUserId(UUID agencyUserId) {
+        if (agencyUserId == null) {
             throw BadRequestException.forField("agencyId", "Il campo 'agencyId' è obbligatorio.");
         }
-        return agencyRepository.findById(agencyId)
+        return agencyRepository.findByUserId(agencyUserId)
                 .orElseThrow(() -> new OnboardingException(OnboardingException.Reason.AGENCY_NOT_FOUND, "Agency not found"));
     }
 

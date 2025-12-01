@@ -413,7 +413,8 @@ public class UsersApiDelegateImpl implements UsersApiDelegate {
 
         var userId = UUID.fromString(jwtAuth.getToken().getSubject());
         try {
-            var agency = agencyOnboardingService.requireExistingAgency(agentCreateRequest.getAgencyId());
+            log.info("[Agent Onboarding] cerco agenzia con id user {}",agentCreateRequest.getAgencyId());
+            var agency = agencyOnboardingService.requireExistingAgencyByUserId(agentCreateRequest.getAgencyId());
             log.info("[Agent Onboarding] agenzia trovata {}", agency.id());
             var command = new AgentOnboardingService.CompleteAgentProfileCommand(
                     agency.id(),
