@@ -17,7 +17,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.multipart.MultipartFile;
 
 import java.net.URI;
 import java.util.*;
@@ -56,67 +55,8 @@ public class ListingMediaService {
         this.roleRepository = roleRepository;
     }
 
-    /**
-     * @deprecated
-     */
-    @Transactional
-    @Deprecated(since = "2025-11-04")
-    public List<ListingPhoto> uploadListingPhotos(UUID userId,
-                                                  UUID listingId,
-                                                  List<MultipartFile> files,
-                                                  List<Integer> positions) {
-        var agent = agentRepository.findByUserId(userId)
-                .orElseThrow(AgentProfileRequiredException::new);
-        var listing = listingRepository.findById(listingId)
-                .orElseThrow(() -> BadRequestException.forField(LISTING, "Annuncio inesistente."));
 
-        if (!agent.id().equals(listing.ownerAgentId())) {
-            throw ForbiddenException.actionRequiresRole(PROPRIETARIO);
-        }
-        // Validate positions before any upload occurs
-        if (positions == null || files == null || positions.size() != files.size()) {
-            throw BadRequestException.forField(POSITIONS_FIELD, "Numero di posizioni non coerente con i file.");
-        }
 
-        Set<Integer> seen = new HashSet<>();
-        for (Integer pos : positions) {
-            if (pos == null || pos < 1) {
-                throw BadRequestException.forField(POSITIONS_FIELD, "Le posizioni devono essere valori interi positivi univoci.");
-            }
-            if (!seen.add(pos)) {
-                throw BadRequestException.forField(POSITIONS_FIELD, "Le posizioni nella richiesta devono essere univoche.");
-            }
-        }
-        var existingPositions = listingMediaRepository.findByListingId(listingId).stream()
-                .map(ListingMedia::sortOrder)
-                .collect(Collectors.toSet());
-        for (Integer pos : seen) {
-            if (existingPositions.contains(pos)) {
-                throw BadRequestException.forField(POSITIONS_FIELD, "Posizione già assegnata a una foto esistente.");
-            }
-        }
-
-        List<ListingPhoto> photos = new ArrayList<>();
-        for (int index = 0; index < files.size(); index++) {
-            var file = files.get(index);
-            var media = mediaAssetService.upload(userId, "LISTING_PHOTO", file);
-            var position = positions.get(index);
-            var listingMedia = new ListingMedia(
-                    null,
-                    listing.id(),
-                    media.id(),
-                    position,
-                    null,
-                    null
-            );
-            var saved = listingMediaRepository.save(listingMedia);
-            photos.add(new ListingPhoto()
-                    .id(saved.id())
-                    .url(URI.create(media.publicUrl()))
-                    .position(position));
-        }
-        return photos;
-    }
 
     @Transactional
     public List<ListingPhoto> attachListingPhotos(UUID userId, UUID listingId, List<ListingPhoto> photos) {
